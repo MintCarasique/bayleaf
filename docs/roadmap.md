@@ -19,7 +19,8 @@ Layout follows [the side-rails design](design/rails.md) (ADR-0003, ADR-0004).
 - [x] Right rail: clock, battery, brightness and volume as collapsible sliders (accordion)
 - [ ] Right rail: UPower and native PipeWire/logind clients instead of wpctl/busctl, media
       controls (MPRIS), quick settings, keyboard toggle, notifications
-- [ ] Launcher panel: app grid from `.desktop` files, search
+- [x] Launcher panel: app grid from `.desktop` files, search at the bottom, closes on outside tap
+- [ ] Launcher: pinned apps
 - [ ] Quick settings panel: toggles (Wi-Fi, Bluetooth, rotation lock, tablet mode), volume and
       brightness sliders, media controls
 - [ ] Notification server (org.freedesktop.Notifications) and list

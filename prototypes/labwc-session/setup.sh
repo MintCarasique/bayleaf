@@ -18,7 +18,7 @@ cat > "$cfg/rc.xml" <<EOF
 <?xml version="1.0"?>
 <labwc_config>
   <keyboard>
-    <keybind key="W-0"><action name="Execute" command="sh -c '$stop; ~/.local/bin/bayleaf-shell'"/></keybind>
+    <keybind key="W-0"><action name="Execute" command="sh -c '$stop; ~/.local/bin/bayleaf-shell >\$XDG_RUNTIME_DIR/bayleaf-shell.log 2>&amp;1'"/></keybind>
     <keybind key="W-1"><action name="Execute" command="sh -c '$stop; GTK_A11Y=none ~/.local/bin/rail-gtk'"/></keybind>
     <keybind key="W-2"><action name="Execute" command="sh -c '$stop; ~/.local/bin/rail-iced'"/></keybind>
     <keybind key="W-q"><action name="Execute" command="sh -c '$stop'"/></keybind>

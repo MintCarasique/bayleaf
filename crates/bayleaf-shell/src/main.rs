@@ -3,8 +3,10 @@
 //! One process hosts every shell surface (ADR-0002).
 
 mod accordion;
+mod app_search;
 mod controls;
 mod device;
+mod launcher;
 mod rails;
 mod status;
 mod style;
@@ -46,7 +48,10 @@ fn activate(app: &gtk4::Application) {
         }
     };
 
-    let left = Rc::new(rails::LeftRail::new(app, controller));
+    let launcher = launcher::Launcher::new(app);
+    let left = Rc::new(rails::LeftRail::new(app, controller, move || {
+        launcher.toggle()
+    }));
     let right = rails::right_rail(app);
     left.present();
     right.present();

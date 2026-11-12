@@ -50,7 +50,11 @@ pub struct LeftRail {
 }
 
 impl LeftRail {
-    pub fn new(app: &gtk4::Application, controller: Option<Controller>) -> Self {
+    pub fn new(
+        app: &gtk4::Application,
+        controller: Option<Controller>,
+        on_start: impl Fn() + 'static,
+    ) -> Self {
         let window = rail_window(app, Edge::Left, "left");
         let col = rail_column();
         let apps = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
@@ -61,7 +65,7 @@ impl LeftRail {
         start.add_css_class("start");
         start.set_halign(gtk4::Align::Center);
         start.set_tooltip_text(Some("Start"));
-        start.connect_clicked(|_| tracing::info!("start pressed (launcher comes in a later step)"));
+        start.connect_clicked(move |_| on_start());
         col.append(&start);
 
         window.set_child(Some(&col));

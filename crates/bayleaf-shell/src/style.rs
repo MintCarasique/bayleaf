@@ -16,6 +16,13 @@ window.bayleaf-rail.right { border-left:  1px solid #2f3a2f; }
 .bayleaf-rail button.start { color: #8fc48f; }
 .bayleaf-rail button image { -gtk-icon-size: 24px; }
 .bayleaf-rail label.status { font-size: 12px; }
+window.bayleaf-scrim { background: rgba(0, 0, 0, 0.25); }
+window.bayleaf-launcher { background: #1e211e; color: #e6e6e6; border-right: 1px solid #2f3a2f; }
+.bayleaf-launcher flowboxchild { padding: 0; border-radius: 8px; }
+.bayleaf-launcher flowboxchild:active { background: #2f3a2f; }
+.bayleaf-launcher flowboxchild:focus-visible { outline: 2px solid #4b7f52; outline-offset: -2px; }
+.bayleaf-launcher .bayleaf-tile label { font-size: 11px; }
+.bayleaf-launcher entry { min-height: 44px; border-radius: 8px; }
 ";
 
 /// Installs the Bayleaf stylesheet for the default display.
