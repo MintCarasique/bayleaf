@@ -28,8 +28,9 @@ Status: draft. Decisions that are still open are marked **OPEN** and tracked in 
 - Built on **Smithay**. Starting point **OPEN** (ADR-0001): fork of niri (GPL-3, mature backend and
   input handling) vs. building up from Smithay's `anvil` example.
 - **Window model**
-  - *Tablet mode*: every toplevel maximized, one visible at a time; switching via taskbar,
-    edge swipe or the window list. Dialogs float centered.
+  - *Tablet mode*: every toplevel maximized (or two side by side), with a 40 px server-side title
+    strip and a close button; switching via the left rail. Dialogs float centered.
+    Details: [design/windows.md](design/windows.md).
   - *Laptop mode*: floating, overlapping windows with snap-to-half; drag/resize with pointer or finger.
   - Minimize is a first-class state (shown in the taskbar), unlike tiling compositors.
 - **Touch**

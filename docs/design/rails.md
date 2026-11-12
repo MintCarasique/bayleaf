@@ -59,6 +59,10 @@ sides.
 Rails collapse into a single bottom taskbar (40 px): start, running apps with titles, then status
 and clock — the familiar desktop layout for pointer use. Windows float (see architecture.md).
 
+## Windows
+Window controls in both modes — title strip with a close button in tablet mode, floating windows
+with a title bar in laptop mode — are specified in [windows.md](windows.md).
+
 ## Full-screen apps
 Video players and games can hide the rails; a short swipe from either edge brings the
 corresponding rail back for 3 s.
