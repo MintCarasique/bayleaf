@@ -1,0 +1,20 @@
+[package]
+name = "rail-iced"
+version = "0.0.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+publish = false
+description = "ADR-0002 prototype: Bayleaf rails in iced + iced_layershell"
+
+[dependencies]
+iced = { version = "0.14", features = ["smol"] }
+iced_layershell = "0.19"
+smol = "2"
+# iced_exdevtools 0.19.1 fails to compile against winit-core 0.31.0-beta.4 (non-exhaustive
+# NativeKeyCode match); pin the beta it was written for.
+winit-core = "=0.31.0-beta.2"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

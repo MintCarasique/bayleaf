@@ -20,16 +20,16 @@ Accepted in [ADR-0003](../decisions/0003-ui-concept-rails.md), refined by
 
 ```
 ┌──────┬────────────────────────────────────────────┬──────┐
-│ ⊞    │ ← ▣ App title                      ☰   ✕   │19:40 │
-│ ──   ├────────────────────────────────────────────┤ ▮55% │
-│ [●]  │                                            │  ☀   │
+│ [●]  │ ← ▣ App title                      ☰   ✕   │19:40 │
+│  ○   ├────────────────────────────────────────────┤ ▮55% │
+│  ○   │                                            │  ☀   │
 │  ○   │                                            │  ┃   │
-│  ○   │              application                   │  ♪   │
-│  ○   │                                            │  ┃   │
+│      │              application                   │  ♪   │
+│      │                                            │  ┃   │
 │      │                                            │ ▶ ⏸  │
 │      │                                            │  ⚙   │
-│      │                                            │  ⌨   │
-│      │                                            │  🔔  │
+│ ──   │                                            │  ⌨   │
+│ ⊞    │                                            │  🔔  │
 └──────┴────────────────────────────────────────────┴──────┘
   56 px                                               56 px
 ```
@@ -37,8 +37,8 @@ Accepted in [ADR-0003](../decisions/0003-ui-concept-rails.md), refined by
 ### Left rail — apps
 | Element | Tap | Long press / drag |
 |---|---|---|
-| Start (top) | open launcher panel sliding from the left | — |
-| Running and pinned apps (scrollable) | switch to app | long press: side by side, full screen, pin, close; drag onto a screen half: side by side |
+| Running and pinned apps (top, scrollable) | switch to app | long press: side by side, full screen, pin, close; drag onto a screen half: side by side |
+| Start (bottom) | open the launcher panel from the bottom-left corner | — |
 
 The active app is marked with a filled background, not a dot — readable at a glance. In side-by-side
 mode both visible apps are marked.
@@ -60,8 +60,9 @@ Top to bottom:
 rotation lock, tablet mode, night light, do not disturb) as a 2-column grid of 48 px buttons,
 network and Bluetooth device lists, full media player, link to settings.
 
-**Launcher panel** slides out from the left rail (≈ 420 px wide): search field on top, app grid
-(4 columns, 72 px tiles), pinned apps first. The on-screen keyboard opens with the search field.
+**Launcher panel** grows from the Start button in the bottom-left corner (≈ 420 px wide, up to the
+full height): app grid (4 columns, 72 px tiles), pinned apps first, search field at the bottom next
+to the thumb. The on-screen keyboard opens with the search field.
 
 ## Tablet, portrait (800 × 1280)
 Rails merge into one bottom bar (64 px): start and running apps on the left half; status,

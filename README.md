@@ -19,7 +19,7 @@ slow eMMC storage.
 - **Built for hands.** Side rails keep apps under the left thumb and device controls under the
   right one; each window carries its own back, menu and close. Height stays with the app. Docked, the rails turn into a familiar taskbar.
   See [docs/design/rails.md](docs/design/rails.md).
-- **Boring tech.** Rust, [Smithay](https://github.com/Smithay/smithay), standard Wayland protocols
+- **Boring tech.** Rust, [Smithay](https://github.com/Smithay/smithay), GTK4 for the shell UI, standard Wayland protocols
   (layer-shell, foreign-toplevel, input-method-v2, virtual-keyboard) so existing apps just work.
 
 ## Non-goals

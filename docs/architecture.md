@@ -46,7 +46,8 @@ Status: draft. Decisions that are still open are marked **OPEN** and tracked in 
 - One process, several layer-shell surfaces laid out per [the side-rails design](design/rails.md)
   (ADR-0003): left rail (apps), right rail (system), launcher and quick-settings panels; a bottom
   bar in portrait and a taskbar in laptop mode.
-- Toolkit **OPEN** (ADR-0002): iced (MIT, used by COSMIC) vs. slint.
+- Toolkit: **GTK4** via gtk4-rs + gtk4-layer-shell, plain widgets with Bayleaf CSS (ADR-0002).
+  One process hosts every shell surface, and later the on-screen keyboard, to stay within budget.
 - Talks to the compositor via standard protocols where they exist (foreign-toplevel for the
   taskbar) and `bayleaf-ipc` for Bayleaf-specific state (mode, rotation lock, gestures).
 - Quick toggles via system D-Bus services: NetworkManager, BlueZ, UPower, PipeWire/WirePlumber.

@@ -6,6 +6,7 @@ members = [
     "crates/bayleaf-osk",
     "crates/bayleaf-ipc",
 ]
+exclude = ["prototypes"]
 
 [workspace.package]
 version = "0.0.1"
