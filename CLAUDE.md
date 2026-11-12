@@ -33,7 +33,7 @@ crates/
   bayleaf-osk/     on-screen keyboard
   bayleaf-ipc/     shared protocol types (library)
 docs/
-  architecture.md  roadmap.md  decisions/
+  architecture.md  roadmap.md  decisions/  design/ (UI specs — rails.md is the source of truth for layout)
 ```
 
 ## Dev loop

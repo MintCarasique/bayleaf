@@ -12,10 +12,14 @@ pauses for a while.
 
 ## M1 — Shell on an existing compositor
 Works on labwc / sway / KWin via layer-shell + foreign-toplevel.
-- [ ] Taskbar: start button, running apps, clock, battery, network, volume
-- [ ] Start menu: app grid/list from `.desktop` files, search
-- [ ] Action center: quick toggles (Wi-Fi, Bluetooth, rotation lock), volume and brightness sliders,
-      notifications (org.freedesktop.Notifications server)
+Layout follows [the side-rails design](design/rails.md) (ADR-0003).
+- [ ] Left rail: start, running apps, back
+- [ ] Right rail: clock and status, keyboard toggle, notifications
+- [ ] Launcher panel: app grid from `.desktop` files, search
+- [ ] Quick settings panel: toggles (Wi-Fi, Bluetooth, rotation lock, tablet mode), volume and
+      brightness sliders, media controls
+- [ ] Notification server (org.freedesktop.Notifications) and list
+- [ ] Portrait bottom bar and laptop-mode taskbar variants
 
 ## M2 — Compositor
 - [ ] Boots on DRM/KMS with libseat, XWayland

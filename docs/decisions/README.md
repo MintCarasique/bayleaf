@@ -7,3 +7,4 @@ Context, Options, Decision, Consequences.
 |---|---|---|
 | 0001 | Compositor starting point: niri fork vs. Smithay anvil | proposed |
 | 0002 | Shell toolkit: iced vs. slint | proposed |
+| 0003 | [UI concept: side rails](0003-ui-concept-rails.md) | accepted |

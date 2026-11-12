@@ -16,8 +16,9 @@ slow eMMC storage.
 - **Small.** Whole idle session (compositor + shell) under **300 MB RSS** on the reference device.
 - **Tablet-aware.** Tablet / laptop mode follows the keyboard dock; rotation follows the
   accelerometer, with touch input mapped correctly in every orientation.
-- **Familiar.** Taskbar, start menu, action center with quick toggles — behaviour borrowed from
-  Windows 10 tablet mode, because people already know it.
+- **Built for hands.** Side rails keep apps under the left thumb and system controls under the
+  right one; height stays with the app. Docked, the rails turn into a familiar taskbar.
+  See [docs/design/rails.md](docs/design/rails.md).
 - **Boring tech.** Rust, [Smithay](https://github.com/Smithay/smithay), standard Wayland protocols
   (layer-shell, foreign-toplevel, input-method-v2, virtual-keyboard) so existing apps just work.
 
@@ -36,7 +37,7 @@ HP Pavilion x2 10 (Intel Atom Z3736F "Bay Trail", 2 GB RAM, 64 GB eMMC, 1280×80
 | Component | Crate | What it does |
 |---|---|---|
 | Compositor | `bayleaf-comp` | Smithay-based compositor: windows, touch gestures, tablet mode, rotation |
-| Shell | `bayleaf-shell` | Taskbar, start menu, action center (layer-shell clients) |
+| Shell | `bayleaf-shell` | Side rails, launcher, quick settings, notifications (layer-shell clients) |
 | Keyboard | `bayleaf-osk` | On-screen keyboard (input-method-v2 + virtual-keyboard) |
 | IPC | `bayleaf-ipc` | Shared types and protocol between compositor and shell |
 
