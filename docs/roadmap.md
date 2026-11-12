@@ -6,7 +6,8 @@ pauses for a while.
 ## M0 — Foundation
 - [x] Repository, GPL-3.0-or-later, README, architecture draft
 - [x] Cargo workspace skeleton, CI (fmt, clippy `-D warnings`, test)
-- [ ] Dev loop: build in Linux/WSL2, run nested (winit backend), deploy to the tablet over SSH
+- [x] Dev loop: build in Linux/WSL2, deploy to the tablet over SSH (`scripts/check.sh`, `scripts/deploy.sh`)
+- [ ] Run the compositor nested (winit backend) — comes with ADR-0001
 - [ ] ADR-0001: compositor starting point (niri fork vs. anvil)
 - [ ] ADR-0002: shell toolkit (iced vs. slint)
 

@@ -11,8 +11,35 @@ cargo build --workspace
 cargo test --workspace
 ```
 
-Before sending a change: `cargo fmt --all`, `cargo clippy --workspace --all-targets -- -D warnings`,
-`cargo test --workspace`.
+Before sending a change run `scripts/check.sh` (fmt, clippy `-D warnings`, tests — same as CI).
+
+### System libraries (Debian/Ubuntu)
+```sh
+sudo apt install build-essential clang pkg-config libwayland-dev libxkbcommon-dev libudev-dev \
+  libinput-dev libgbm-dev libseat-dev libdrm-dev libegl-dev libgles-dev libpixman-1-dev \
+  libdisplay-info-dev libfontconfig-dev libdbus-1-dev libpipewire-0.3-dev
+```
+
+### Windows: WSL2
+Ubuntu 24.04 in WSL2 with WSLg works: Wayland clients and the nested compositor show up as
+Windows windows. Keep the sources wherever you like, but put the build directory on the Linux
+filesystem — building through `/mnt/c` or `/mnt/d` is slow:
+
+```sh
+export CARGO_TARGET_DIR=$HOME/.cache/bayleaf-target
+```
+
+### Testing on a device
+Touch, rotation and DRM need real hardware. Build on your machine and copy the binaries over SSH
+(never build on a 2 GB tablet):
+
+```sh
+BAYLEAF_DEVICE=user@tablet scripts/deploy.sh            # all binaries
+BAYLEAF_DEVICE=user@tablet scripts/deploy.sh bayleaf-shell
+```
+
+Binaries go to `~/.local/bin` on the device. Binaries built on Ubuntu 24.04 (glibc 2.39) run on
+Debian 13 (glibc 2.41); building on a newer distro than the device may not.
 
 ## Rules
 See [CLAUDE.md](CLAUDE.md) — it applies to humans too: small focused changes, English everywhere,
