@@ -16,8 +16,8 @@ slow eMMC storage.
 - **Small.** Whole idle session (compositor + shell) under **300 MB RSS** on the reference device.
 - **Tablet-aware.** Tablet / laptop mode follows the keyboard dock; rotation follows the
   accelerometer, with touch input mapped correctly in every orientation.
-- **Built for hands.** Side rails keep apps under the left thumb and system controls under the
-  right one; height stays with the app. Docked, the rails turn into a familiar taskbar.
+- **Built for hands.** Side rails keep apps under the left thumb and device controls under the
+  right one; each window carries its own back, menu and close. Height stays with the app. Docked, the rails turn into a familiar taskbar.
   See [docs/design/rails.md](docs/design/rails.md).
 - **Boring tech.** Rust, [Smithay](https://github.com/Smithay/smithay), standard Wayland protocols
   (layer-shell, foreign-toplevel, input-method-v2, virtual-keyboard) so existing apps just work.

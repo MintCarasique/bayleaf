@@ -1,71 +1,85 @@
 # Design: side rails
 
-Accepted in [ADR-0003](../decisions/0003-ui-concept-rails.md). Sizes are logical pixels at scale 1
-on the 1280×800 reference screen.
+Accepted in [ADR-0003](../decisions/0003-ui-concept-rails.md), refined by
+[ADR-0004](../decisions/0004-window-scoped-menus.md). Sizes are logical pixels at scale 1 on the
+1280×800 reference screen.
 
 ## Principles
 1. **Thumb reach.** Everything frequent lives within ~60 px of the left or right edge, in the
    vertical middle of the screen where thumbs rest when holding a tablet.
-2. **Left = apps, right = system.** The left hand moves between apps; the right hand controls the
-   device. The split never changes, so muscle memory builds fast.
-3. **Height belongs to apps.** No horizontal bars in tablet landscape.
+2. **One job per screen side.**
+   - **Left rail — apps**: switch, launch, pin.
+   - **Right rail — device**: status and controls for the tablet itself.
+   - **Window title strip — the app**: back, app menu, close. Anything that belongs to a window
+     lives on that window, so two windows side by side are never ambiguous.
+3. **Height belongs to apps.** No horizontal bars in tablet landscape except each window's own
+   title strip.
 4. **Touch targets ≥ 48 px**, spacing ≥ 8 px. Icons 24 px.
 
 ## Tablet, landscape (primary)
 
 ```
 ┌──────┬────────────────────────────────────────────┬──────┐
-│ ⊞    │                                            │19:40 │
-│ ──   │                                            │ ▮55% │
-│ [●]  │                                            │ wifi │
-│  ○   │              application                   │ vol  │
-│  ○   │          (1168 × 800, maximized)            │ sun  │
-│  ○   │                                            │      │
+│ ⊞    │ ← ▣ App title                      ☰   ✕   │19:40 │
+│ ──   ├────────────────────────────────────────────┤ ▮55% │
+│ [●]  │                                            │  ☀   │
+│  ○   │                                            │  ┃   │
+│  ○   │              application                   │  ♪   │
+│  ○   │                                            │  ┃   │
+│      │                                            │ ▶ ⏸  │
+│      │                                            │  ⚙   │
 │      │                                            │  ⌨   │
-│  ↶   │                                            │  🔔  │
+│      │                                            │  🔔  │
 └──────┴────────────────────────────────────────────┴──────┘
   56 px                                               56 px
 ```
 
 ### Left rail — apps
-| Element | Tap | Long press / swipe |
+| Element | Tap | Long press / drag |
 |---|---|---|
 | Start (top) | open launcher panel sliding from the left | — |
-| Running apps (middle, scrollable) | switch to app | long press: close / app menu; drag out to the right: split view (later) |
-| Back (bottom) | sends `Back` (Alt+Left / Escape by app class) | — |
+| Running and pinned apps (scrollable) | switch to app | long press: side by side, full screen, pin, close; drag onto a screen half: side by side |
 
-The active app is marked with a filled background, not a dot — readable at a glance.
+The active app is marked with a filled background, not a dot — readable at a glance. In side-by-side
+mode both visible apps are marked.
 
-### Right rail — system
-| Element | Tap | Swipe left from the rail |
-|---|---|---|
-| Clock, battery, network, volume, brightness (status, top) | open quick settings | open quick settings |
-| Keyboard (bottom) | toggle on-screen keyboard | — |
-| Notifications (bottom) | open notification list | — |
+### Right rail — device ("remote control")
+Top to bottom:
+
+| Element | Interaction |
+|---|---|
+| Clock, battery, network | tap: quick settings panel |
+| Brightness slider (vertical, ~120 px) | drag along the rail with the thumb; a 150 ms hold before the first move starts the drag, so brushing past it does nothing |
+| Volume slider (vertical, ~120 px) | same; tap the speaker glyph to mute |
+| Media controls | shown only while something plays (MPRIS): play/pause, next; tap the cover for the full player in quick settings |
+| Quick settings | tap: panel sliding from the right; also a swipe left from anywhere on the rail |
+| Keyboard | toggle on-screen keyboard |
+| Notifications | tap: notification list; badge with unread count |
 
 **Quick settings panel** slides out from the right rail (≈ 360 px wide): toggles (Wi-Fi, Bluetooth,
 rotation lock, tablet mode, night light, do not disturb) as a 2-column grid of 48 px buttons,
-brightness and volume sliders, media controls.
+network and Bluetooth device lists, full media player, link to settings.
 
 **Launcher panel** slides out from the left rail (≈ 420 px wide): search field on top, app grid
 (4 columns, 72 px tiles), pinned apps first. The on-screen keyboard opens with the search field.
 
 ## Tablet, portrait (800 × 1280)
-Rails merge into one bottom bar (64 px): start and running apps on the left half, status,
-keyboard and notifications on the right half. Panels slide up from the bar instead of from the
-sides.
+Rails merge into one bottom bar (64 px): start and running apps on the left half; status,
+quick settings, keyboard and notifications on the right half. Sliders move into the quick settings
+panel. Panels slide up from the bar instead of from the sides.
 
 ## Laptop mode (keyboard dock attached)
-Rails collapse into a single bottom taskbar (40 px): start, running apps with titles, then status
-and clock — the familiar desktop layout for pointer use. Windows float (see architecture.md).
+Rails collapse into a single bottom taskbar (40 px): start, running apps with titles, then status,
+volume, quick settings and clock — the familiar desktop layout for pointer use. Windows float with
+title bars (see [windows.md](windows.md)).
 
-## Windows
-Window controls in both modes — title strip with a close button in tablet mode, floating windows
-with a title bar in laptop mode — are specified in [windows.md](windows.md).
+## Windows and app menus
+The title strip (back, app menu, close) and window behaviour in both modes are specified in
+[windows.md](windows.md).
 
 ## Full-screen apps
-Video players and games can hide the rails; a short swipe from either edge brings the
-corresponding rail back for 3 s.
+Video players and games can hide the rails and the title strip; a short swipe from either edge
+brings the corresponding rail back for 3 s, a swipe from the top brings the strip back.
 
 ## Visual language
 - Flat surfaces, no blur or shadows (GPU budget). One accent colour (leaf green).
