@@ -14,7 +14,8 @@ pauses for a while.
 ## M1 — Shell on an existing compositor
 Works on labwc / sway / KWin via layer-shell + foreign-toplevel.
 Layout follows [the side-rails design](design/rails.md) (ADR-0003, ADR-0004).
-- [ ] Left rail: start, running and pinned apps
+- [x] Left rail: running apps via wlr-foreign-toplevel, tap to switch, Start at the bottom
+- [ ] Left rail: pinned apps, long-press menu
 - [ ] Right rail: status, vertical brightness and volume sliders, media controls, quick settings,
       keyboard toggle, notifications
 - [ ] Launcher panel: app grid from `.desktop` files, search

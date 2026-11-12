@@ -1,6 +1,6 @@
 [package]
 name = "bayleaf-shell"
-description = "Bayleaf taskbar, start menu and action center"
+description = "Bayleaf side rails, launcher and quick settings (GTK4 + layer-shell)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,10 +9,14 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
-bayleaf-ipc.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+gtk4.workspace = true
+gtk4-layer-shell.workspace = true
+wayland-client.workspace = true
+wayland-protocols-wlr.workspace = true
+async-channel.workspace = true
 
 [lints]
 workspace = true
