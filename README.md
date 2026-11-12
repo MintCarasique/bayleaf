@@ -7,7 +7,16 @@ that shows up when you need it, auto-rotation, a tablet mode that switches itsel
 the keyboard — but on hardware where those desktops are too heavy: 2 GB of RAM, an Atom CPU and
 slow eMMC storage.
 
-> **Status: pre-alpha, design phase.** Nothing here is usable yet. See [docs/roadmap.md](docs/roadmap.md).
+> **Status: pre-alpha.** The shell runs on the reference tablet on top of labwc; the compositor is
+> not written yet. See [docs/roadmap.md](docs/roadmap.md).
+
+## Screenshots
+
+Reference tablet (1280×800), `bayleaf-shell` on labwc, early milestone M1.
+
+| Side rails with an app | Launcher |
+|---|---|
+| ![Dolphin maximized between the rails: open apps on the left, clock, battery, brightness and volume on the right](docs/screenshots/rails.png) | ![Launcher panel next to the left rail: app grid with the search field at the bottom](docs/screenshots/launcher.png) |
 
 ## Goals
 
