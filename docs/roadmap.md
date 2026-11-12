@@ -16,8 +16,9 @@ Works on labwc / sway / KWin via layer-shell + foreign-toplevel.
 Layout follows [the side-rails design](design/rails.md) (ADR-0003, ADR-0004).
 - [x] Left rail: running apps via wlr-foreign-toplevel, tap to switch, Start at the bottom
 - [ ] Left rail: pinned apps, long-press menu
-- [ ] Right rail: status, vertical brightness and volume sliders, media controls, quick settings,
-      keyboard toggle, notifications
+- [x] Right rail: clock, battery, brightness and volume as collapsible sliders (accordion)
+- [ ] Right rail: UPower and native PipeWire/logind clients instead of wpctl/busctl, media
+      controls (MPRIS), quick settings, keyboard toggle, notifications
 - [ ] Launcher panel: app grid from `.desktop` files, search
 - [ ] Quick settings panel: toggles (Wi-Fi, Bluetooth, rotation lock, tablet mode), volume and
       brightness sliders, media controls

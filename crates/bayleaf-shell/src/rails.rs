@@ -4,9 +4,11 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
 
-use crate::status;
+use std::rc::Rc;
+
 use crate::toplevel::Controller;
 use crate::toplevel_model::{Toplevel, Toplevels};
+use crate::{controls, device, status};
 
 pub const RAIL_WIDTH: i32 = 56;
 const FALLBACK_ICON: &str = "application-x-executable-symbolic";
@@ -140,6 +142,7 @@ pub fn right_rail(app: &gtk4::Application) -> gtk4::ApplicationWindow {
     battery.add_css_class("status");
     col.append(&clock);
     col.append(&battery);
+    col.append(&controls::stack(device_controls()));
     col.append(&spacer());
 
     glib::timeout_add_seconds_local(15, move || {
@@ -150,4 +153,39 @@ pub fn right_rail(app: &gtk4::Application) -> gtk4::ApplicationWindow {
 
     window.set_child(Some(&col));
     window
+}
+
+/// Brightness (if the device has a backlight) and volume, as collapsible rail controls.
+fn device_controls() -> Vec<controls::Control> {
+    let mut list = Vec::new();
+    match device::Backlight::find() {
+        Some(backlight) => {
+            let backlight = Rc::new(backlight);
+            let read_bl = backlight.clone();
+            list.push(controls::Control {
+                icon: "display-brightness-symbolic",
+                tooltip: "Brightness",
+                read: Rc::new(move || {
+                    let v = read_bl.percent();
+                    Box::pin(async move { v })
+                }),
+                write: Rc::new(move |p| backlight.set_percent(p)),
+            });
+        }
+        None => tracing::info!("no backlight device; brightness control hidden"),
+    }
+    let last_volume = Rc::new(std::cell::Cell::new(None::<f64>));
+    list.push(controls::Control {
+        icon: "audio-volume-high-symbolic",
+        tooltip: "Volume",
+        read: Rc::new(|| Box::pin(device::volume_percent())),
+        write: Rc::new(move |p| {
+            device::set_volume_percent(p);
+            if let Some(muted) = device::mute_change(last_volume.get(), p) {
+                device::set_muted(muted);
+            }
+            last_volume.set(Some(p));
+        }),
+    });
+    list
 }

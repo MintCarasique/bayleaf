@@ -2,6 +2,9 @@
 //!
 //! One process hosts every shell surface (ADR-0002).
 
+mod accordion;
+mod controls;
+mod device;
 mod rails;
 mod status;
 mod style;

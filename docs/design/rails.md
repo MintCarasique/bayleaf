@@ -49,8 +49,7 @@ Top to bottom:
 | Element | Interaction |
 |---|---|
 | Clock, battery, network | tap: quick settings panel |
-| Brightness slider (vertical, ~120 px) | drag along the rail with the thumb; a 150 ms hold before the first move starts the drag, so brushing past it does nothing |
-| Volume slider (vertical, ~120 px) | same; tap the speaker glyph to mute |
+| Brightness, volume (collapsed icons) | tap an icon: a vertical slider (~140 px) slides open right below it and pushes the rest of the rail down. **Only one slider is open at a time** — opening another closes the first. Tap the icon again to close; it also closes by itself 5 s after the last touch. |
 | Media controls | shown only while something plays (MPRIS): play/pause, next; tap the cover for the full player in quick settings |
 | Quick settings | tap: panel sliding from the right; also a swipe left from anywhere on the rail |
 | Keyboard | toggle on-screen keyboard |

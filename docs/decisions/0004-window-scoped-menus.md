@@ -27,4 +27,5 @@ search-only HUD, frequent actions on the rail, a single rail, an edge handle ins
 - The right rail earns its width with controls used constantly on a tablet (brightness, volume).
 - `bayleaf-comp` must implement the `org_kde_kwin_appmenu` protocol and the shell needs a
   DBusMenu client. GTK4/libadwaita apps export no menu and get window actions as a fallback.
-- Rail sliders need protection against accidental touches (short hold before dragging).
+- Rail sliders are collapsed to icons and open one at a time on tap (accordion), so they cannot
+  be moved by an accidental touch and do not eat rail height when unused.
