@@ -1,0 +1,18 @@
+[package]
+name = "bayleaf-comp"
+description = "Bayleaf touch-first Wayland compositor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+bayleaf-ipc.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

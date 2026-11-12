@@ -1,0 +1,18 @@
+[package]
+name = "bayleaf-shell"
+description = "Bayleaf taskbar, start menu and action center"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+bayleaf-ipc.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true
