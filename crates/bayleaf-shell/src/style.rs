@@ -11,12 +11,13 @@ window.bayleaf-rail.right { border-left:  1px solid #2f3a2f; }
   min-width: 48px; min-height: 48px; padding: 0; border-radius: 8px;
   background: transparent; border: none; box-shadow: none; color: #e6e6e6;
 }
-.bayleaf-rail button:hover, .bayleaf-rail button:active { background: #2f3a2f; }
+.bayleaf-rail button:active { background: #2f3a2f; }
 .bayleaf-rail button.active { background: #2f3a2f; }
 .bayleaf-rail button.minimized { opacity: 0.55; }
 .bayleaf-rail button.start { color: #8fc48f; }
 .bayleaf-rail button image { -gtk-icon-size: 24px; }
 .bayleaf-rail label.status { font-size: 12px; }
+.bayleaf-rail popover button.bayleaf-menu-item { min-height: 48px; min-width: 120px; padding: 0 16px; }
 window.bayleaf-scrim { background: rgba(0, 0, 0, 0.25); }
 window.bayleaf-launcher { background: #1e211e; color: #e6e6e6; border-right: 1px solid #2f3a2f; }
 .bayleaf-launcher flowboxchild { padding: 0; border-radius: 8px; }

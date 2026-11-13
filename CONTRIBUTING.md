@@ -17,7 +17,8 @@ Before sending a change run `scripts/check.sh` (fmt, clippy `-D warnings`, tests
 ```sh
 sudo apt install build-essential clang pkg-config libwayland-dev libxkbcommon-dev libudev-dev \
   libinput-dev libgbm-dev libseat-dev libdrm-dev libegl-dev libgles-dev libpixman-1-dev \
-  libdisplay-info-dev libfontconfig-dev libdbus-1-dev libpipewire-0.3-dev
+  libdisplay-info-dev libfontconfig-dev libdbus-1-dev libpipewire-0.3-dev libgtk-4-dev \
+  libgtk4-layer-shell-dev libpango1.0-dev libxcb1-dev libxcb-cursor-dev
 ```
 
 ### Windows: WSL2
@@ -37,6 +38,23 @@ Touch, rotation and DRM need real hardware. Build on your machine and copy the b
 BAYLEAF_DEVICE=user@tablet scripts/deploy.sh            # all binaries
 BAYLEAF_DEVICE=user@tablet scripts/deploy.sh bayleaf-shell
 ```
+
+The compositor (niri, ADR-0001) and xwayland-satellite are not packaged in Debian; build and copy
+them at the pinned versions with:
+
+```sh
+BAYLEAF_DEVICE=user@tablet scripts/deploy-niri.sh
+```
+
+Then install the "Bayleaf" display-manager session on the device (it needs the files from
+`session/` there):
+
+```sh
+sudo session/install.sh <user>
+```
+
+Inside the session: Ctrl+Alt+Backspace quits, Super+0 restarts the shell, logs are in
+`$XDG_RUNTIME_DIR/{niri,bayleaf-shell,squeekboard}.log`.
 
 Binaries go to `~/.local/bin` on the device. Binaries built on Ubuntu 24.04 (glibc 2.39) run on
 Debian 13 (glibc 2.41); building on a newer distro than the device may not.

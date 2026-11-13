@@ -32,21 +32,36 @@ pub struct Controller {
 }
 
 impl Controller {
+    fn handle(&self, id: ToplevelId) -> Option<ZwlrForeignToplevelHandleV1> {
+        match self.handles.lock() {
+            Ok(map) => map.get(&id).cloned(),
+            Err(_) => None,
+        }
+    }
+
+    fn flush(&self, what: &str) {
+        if let Err(e) = self.conn.flush() {
+            tracing::warn!(error = %e, what, "Wayland flush failed");
+        }
+    }
+
+    /// Asks the app to close the toplevel (it may ask to save first).
+    pub fn close(&self, id: ToplevelId) {
+        if let Some(h) = self.handle(id) {
+            h.close();
+            self.flush("close");
+        }
+    }
+
     /// Asks the compositor to focus and raise the toplevel.
     pub fn activate(&self, id: ToplevelId) {
         let Some(seat) = &self.seat else {
             tracing::warn!("no wl_seat, cannot activate toplevel");
             return;
         };
-        let handle = match self.handles.lock() {
-            Ok(map) => map.get(&id).cloned(),
-            Err(_) => None,
-        };
-        if let Some(h) = handle {
+        if let Some(h) = self.handle(id) {
             h.activate(seat);
-            if let Err(e) = self.conn.flush() {
-                tracing::warn!(error = %e, "flush after activate failed");
-            }
+            self.flush("activate");
         }
     }
 }

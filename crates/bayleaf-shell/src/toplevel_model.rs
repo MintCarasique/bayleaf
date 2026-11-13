@@ -95,6 +95,11 @@ impl Toplevels {
         }
     }
 
+    /// The focused (activated) window, if any.
+    pub fn focused(&self) -> Option<ToplevelId> {
+        self.items.iter().find(|t| t.activated).map(|t| t.id)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Toplevel> {
         self.items.iter()
     }
@@ -160,6 +165,18 @@ mod tests {
         assert!(m.apply(ToplevelEvent::Closed(1)));
         assert!(!m.apply(ToplevelEvent::Closed(1)));
         assert_eq!(m.iter().count(), 0);
+    }
+
+    #[test]
+    fn focused_follows_activated_state() {
+        let mut m = Toplevels::new();
+        assert_eq!(m.focused(), None);
+        m.apply(ToplevelEvent::Updated(top(1, "a")));
+        assert_eq!(m.focused(), None);
+        let mut b = top(2, "b");
+        b.activated = true;
+        m.apply(ToplevelEvent::Updated(b));
+        assert_eq!(m.focused(), Some(2));
     }
 
     #[test]

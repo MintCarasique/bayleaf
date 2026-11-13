@@ -1,0 +1,16 @@
+#!/bin/sh
+# Change the screen brightness by a percentage of the maximum: bayleaf-brightness +5 | -5.
+# Goes through logind (Session.SetBrightness), like the right rail, so it needs no write access to
+# sysfs; works from the active session, which is where the hardware keys are handled. Never goes
+# below 1 so the screen does not turn off.
+set -eu
+step="${1:?usage: bayleaf-brightness +N|-N}"
+dev=$(ls /sys/class/backlight | head -n1)
+[ -n "$dev" ] || exit 0
+cur=$(cat "/sys/class/backlight/$dev/brightness")
+max=$(cat "/sys/class/backlight/$dev/max_brightness")
+new=$((cur + max * step / 100))
+[ "$new" -lt 1 ] && new=1
+[ "$new" -gt "$max" ] && new=$max
+busctl call org.freedesktop.login1 /org/freedesktop/login1/session/auto \
+  org.freedesktop.login1.Session SetBrightness ssu backlight "$dev" "$new"

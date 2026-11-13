@@ -92,4 +92,5 @@ labwc offers no external control over window geometry. So:
   the compositor to open an app on a half or to show a screen (Bayleaf IPC, `bayleaf-ipc`).
 
 On labwc (M1) only the shell side can be built; split view itself arrives with the compositor (M2).
-This model is the main requirement for [ADR-0001](../decisions/0001-compositor-starting-point.md).
+This model is the main requirement for [ADR-0001](../decisions/0001-compositor-starting-point.md);
+how it maps onto niri is in [niri-integration.md](niri-integration.md).

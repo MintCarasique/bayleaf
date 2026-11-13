@@ -5,7 +5,7 @@ use std::cell::{Cell, RefCell};
 use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use gtk4::glib;
 use gtk4::prelude::*;
@@ -16,6 +16,10 @@ const AUTO_CLOSE: Duration = Duration::from_secs(5);
 /// Minimum gap between device writes while dragging; each write spawns a process on a slow CPU.
 const WRITE_INTERVAL: Duration = Duration::from_millis(100);
 const SLIDER_HEIGHT: i32 = 140;
+/// While a slider is open it re-reads the device this often, so hardware keys show up on it.
+const POLL_INTERVAL: Duration = Duration::from_millis(500);
+/// No polling this soon after the user moved the slider: it would fight the drag.
+const QUIET_AFTER_INPUT: Duration = Duration::from_millis(800);
 
 pub type ReadFn = Rc<dyn Fn() -> Pin<Box<dyn Future<Output = Option<f64>>>>>;
 pub type WriteFn = Rc<dyn Fn(f64)>;
@@ -76,6 +80,44 @@ fn sync_from_device(
     });
 }
 
+/// Re-reads the device while control `i` stays open (hardware keys change volume and brightness
+/// behind our back). Stops by itself when the control closes.
+fn start_polling(
+    shared: &Rc<Shared>,
+    i: usize,
+    poll: &Rc<RefCell<Option<glib::SourceId>>>,
+    scale: &gtk4::Scale,
+    syncing: &Rc<Cell<bool>>,
+    read: &ReadFn,
+    last_input: &Rc<Cell<Option<Instant>>>,
+) {
+    if let Some(id) = poll.borrow_mut().take() {
+        id.remove();
+    }
+    let (shared, scale, syncing, read, last_input) = (
+        shared.clone(),
+        scale.clone(),
+        syncing.clone(),
+        read.clone(),
+        last_input.clone(),
+    );
+    let slot = poll.clone();
+    let id = glib::timeout_add_local(POLL_INTERVAL, move || {
+        if shared.accordion.borrow().open() != Some(i) {
+            slot.borrow_mut().take();
+            return glib::ControlFlow::Break;
+        }
+        if last_input
+            .get()
+            .is_none_or(|t| t.elapsed() > QUIET_AFTER_INPUT)
+        {
+            sync_from_device(&scale, &syncing, read());
+        }
+        glib::ControlFlow::Continue
+    });
+    *poll.borrow_mut() = Some(id);
+}
+
 /// Builds the stack of collapsible controls.
 pub fn stack(controls: Vec<Control>) -> gtk4::Box {
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
@@ -111,11 +153,14 @@ pub fn stack(controls: Vec<Control>) -> gtk4::Box {
         // Prefetch so the slider opens instantly with a real value; opening refreshes it again.
         sync_from_device(&scale, &syncing, (control.read)());
 
+        let last_input = Rc::new(Cell::new(None::<Instant>));
+        let poll: Rc<RefCell<Option<glib::SourceId>>> = Rc::default();
         {
             let shared = shared.clone();
             let scale = scale.clone();
             let syncing = syncing.clone();
             let read = control.read.clone();
+            let last_input = last_input.clone();
             button.connect_clicked(move |_| {
                 let opened = shared.accordion.borrow_mut().toggle(i) == Some(i);
                 shared.apply();
@@ -124,9 +169,11 @@ pub fn stack(controls: Vec<Control>) -> gtk4::Box {
                 }
                 shared.touch();
                 sync_from_device(&scale, &syncing, read());
+                start_polling(&shared, i, &poll, &scale, &syncing, &read, &last_input);
             });
         }
 
+        let last_input = last_input.clone();
         // Throttle writes while dragging: at most one per WRITE_INTERVAL, last value wins.
         let pending = Rc::new(Cell::new(None::<f64>));
         let scheduled = Rc::new(Cell::new(false));
@@ -138,6 +185,7 @@ pub fn stack(controls: Vec<Control>) -> gtk4::Box {
                     return;
                 }
                 shared.touch();
+                last_input.set(Some(Instant::now()));
                 pending.set(Some(s.value()));
                 if scheduled.replace(true) {
                     return;

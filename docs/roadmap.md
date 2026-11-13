@@ -30,11 +30,15 @@ Layout follows [the side-rails design](design/rails.md) (ADR-0003, ADR-0004).
 
 ## M2 — Compositor
 On niri ([ADR-0001](decisions/0001-compositor-starting-point.md)): stock niri + IPC first, thin fork after.
-- [ ] Bayleaf session on niri: config, shell, squeekboard; replaces the labwc dev session
-- [ ] Map multitasking actions onto niri IPC; list the compositor changes
+- [x] Bayleaf session on niri (`session/`): config, shell, squeekboard, xwayland-satellite,
+      portals, volume and brightness keys; replaces the labwc dev session
+- [x] Map multitasking actions onto niri IPC; list the compositor changes
+      ([niri-integration](design/niri-integration.md))
+- [ ] Shell: niri IPC client; one screen per workspace; open on a half; drop zones
+- [ ] Show the keyboard only after a touch on the text field (fork)
 - [ ] Title strip (← ☰ ✕) in the niri fork
 - [x] Boots on DRM/KMS with libseat (niri)
-- [ ] Xwayland via `xwayland-satellite`
+- [x] Xwayland via `xwayland-satellite`
 - [ ] Tablet mode window model ([multitasking](design/multitasking.md)): screens, 50/50 split
       view, divider, crossfade and slide transitions, overview; title strip (back, app menu, close)
 - [ ] Laptop mode floating windows, minimize, snapping

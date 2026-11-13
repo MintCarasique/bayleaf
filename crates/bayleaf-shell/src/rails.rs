@@ -7,7 +7,7 @@ use gtk4_layer_shell::{Edge, Layer, LayerShell};
 use std::rc::Rc;
 
 use crate::toplevel::Controller;
-use crate::toplevel_model::{Toplevel, Toplevels};
+use crate::toplevel_model::{Toplevel, ToplevelId, Toplevels};
 use crate::{controls, device, osk, status, style};
 
 pub const RAIL_WIDTH: i32 = 56;
@@ -124,8 +124,41 @@ impl LeftRail {
                 c.activate(id);
             }
         });
+        if let Some(c) = &self.controller {
+            attach_app_menu(&b, c.clone(), id);
+        }
         b
     }
+}
+
+/// Long press on an app opens its menu. For now it only has Close: until the title strip exists
+/// (docs/design/windows.md) this is the touch way to close a window.
+fn attach_app_menu(button: &gtk4::Button, controller: Controller, id: ToplevelId) {
+    let close = gtk4::Button::with_label("Close");
+    close.add_css_class("bayleaf-menu-item");
+    let menu = gtk4::Popover::new();
+    menu.set_position(gtk4::PositionType::Right);
+    menu.set_has_arrow(false);
+    menu.set_child(Some(&close));
+    menu.set_parent(button);
+    // The rail rebuilds its buttons on every change; a popover must be unparented by hand.
+    let m = menu.clone();
+    button.connect_destroy(move |_| m.unparent());
+
+    let m = menu.clone();
+    close.connect_clicked(move |_| {
+        m.popdown();
+        controller.close(id);
+    });
+
+    let press = gtk4::GestureLongPress::new();
+    press.set_propagation_phase(gtk4::PropagationPhase::Capture);
+    press.connect_pressed(move |gesture, _, _| {
+        // Claim the touch so the button does not also switch to the app on release.
+        gesture.set_state(gtk4::EventSequenceState::Claimed);
+        menu.popup();
+    });
+    button.add_controller(press);
 }
 
 /// Picks an icon name for an app id: exact, lower-case, or a generic fallback.
@@ -139,7 +172,7 @@ fn icon_for(app_id: &str, theme: &gtk4::IconTheme) -> String {
 }
 
 /// Right rail: device status. Sliders, quick settings and notifications come in later steps.
-pub fn right_rail(app: &gtk4::Application) -> gtk4::ApplicationWindow {
+pub fn right_rail(app: &gtk4::Application, keyboard: &osk::Keyboard) -> gtk4::ApplicationWindow {
     let window = rail_window(app, Edge::Right, "right");
     let col = rail_column();
 
@@ -152,7 +185,7 @@ pub fn right_rail(app: &gtk4::Application) -> gtk4::ApplicationWindow {
     col.append(&controls::stack(device_controls()));
     col.append(&spacer());
     // Bottom of the right rail: next to the keyboard it controls, mirroring Start on the left.
-    col.append(&osk::button());
+    col.append(keyboard.button());
 
     glib::timeout_add_seconds_local(15, move || {
         clock.set_text(&status::clock_text());

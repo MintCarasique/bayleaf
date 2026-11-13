@@ -1,0 +1,10 @@
+#!/bin/sh
+# Starts the Bayleaf session: niri with ~/.config/bayleaf/niri.kdl, which spawns bayleaf-shell and
+# squeekboard. Installed to ~/.local/bin by session/install.sh; started by the display manager.
+export PATH="$HOME/.local/bin:$PATH"
+export XDG_CURRENT_DESKTOP=Bayleaf XDG_SESSION_DESKTOP=bayleaf XDG_SESSION_TYPE=wayland
+
+# squeekboard layouts come from input-sources; its a11y switch is handled in niri.kdl.
+gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'us'), ('xkb', 'ru')]"
+
+exec niri -c "$HOME/.config/bayleaf/niri.kdl" >"${XDG_RUNTIME_DIR:-/tmp}/niri.log" 2>&1

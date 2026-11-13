@@ -1,0 +1,77 @@
+// Bayleaf session on niri (ADR-0001). Installed to ~/.config/bayleaf/niri.kdl by session/install.sh.
+// Tablet model for now: every window is a full-width column between the rails, switching slides
+// between columns. Split view, the title strip and the overview come later
+// (docs/design/multitasking.md).
+
+input {
+    keyboard {
+        xkb {
+            layout "us,ru"
+            options "grp:alt_shift_toggle"
+        }
+    }
+    touchpad {
+        tap
+        natural-scroll
+    }
+}
+
+layout {
+    gaps 0
+    center-focused-column "never"
+    default-column-width { proportion 1.0; }
+    preset-column-widths {
+        proportion 0.5
+        proportion 1.0
+    }
+    focus-ring { off; }
+    border { off; }
+}
+
+prefer-no-csd
+hotkey-overlay { skip-at-startup; }
+screenshot-path "~/Pictures/Screenshots/%Y-%m-%d_%H-%M-%S.png"
+
+environment {
+    QT_QPA_PLATFORM "wayland"
+    GTK_THEME "Adwaita:dark"
+}
+
+// PATH includes ~/.local/bin (set by bayleaf-session); logs go to $XDG_RUNTIME_DIR.
+// D-Bus- and systemd-activated services (portals, kded) must see this session's display, or apps
+// hang on portal timeouts at startup; restart a portal left over from an earlier session.
+spawn-sh-at-startup "dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE QT_QPA_PLATFORM GTK_THEME && systemctl --user try-restart xdg-desktop-portal.service"
+// squeekboard flashes up for a moment when it starts with the a11y switch already on: start it
+// with the switch off and turn it on once the keyboard is up.
+spawn-sh-at-startup "gsettings set org.gnome.desktop.a11y.applications screen-keyboard-enabled false; squeekboard >$XDG_RUNTIME_DIR/squeekboard.log 2>&1 & sleep 3; gsettings set org.gnome.desktop.a11y.applications screen-keyboard-enabled true"
+spawn-sh-at-startup "bayleaf-shell >$XDG_RUNTIME_DIR/bayleaf-shell.log 2>&1"
+
+binds {
+    // Session
+    Ctrl+Alt+BackSpace { quit skip-confirmation=true; }
+    Mod+Shift+E { quit; }
+    Mod+0 { spawn-sh "pkill -x bayleaf-shell; bayleaf-shell >$XDG_RUNTIME_DIR/bayleaf-shell.log 2>&1"; }
+
+    // Apps
+    Mod+Return { spawn "konsole"; }
+    Mod+B { spawn "firefox-esr"; }
+    Mod+E { spawn "dolphin"; }
+
+    // Windows
+    Mod+Q { close-window; }
+    Mod+Tab { focus-column-right-or-first; }
+    Mod+Left { focus-column-left; }
+    Mod+Right { focus-column-right; }
+    Mod+Shift+Left { move-column-left; }
+    Mod+Shift+Right { move-column-right; }
+    Mod+R { switch-preset-column-width; }
+    Mod+F { fullscreen-window; }
+
+    // Hardware keys
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "wpctl" "set-volume" "-l" "1" "@DEFAULT_AUDIO_SINK@" "5%+"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "5%-"; }
+    XF86AudioMute allow-when-locked=true { spawn "wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle"; }
+    XF86MonBrightnessUp allow-when-locked=true { spawn "bayleaf-brightness" "+5"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "bayleaf-brightness" "-5"; }
+    Print { screenshot; }
+}

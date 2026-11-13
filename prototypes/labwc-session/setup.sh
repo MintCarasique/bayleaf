@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Install a bare labwc session ("Bayleaf (dev)") on the test device to run bayleaf-shell and the
-# toolkit prototypes without a desktop around them. Run on the device: sudo ./setup.sh <user>
+# Superseded by the niri-based session in session/ (ADR-0001); kept as a fallback.
+#
+# Install a bare labwc session ("Bayleaf on labwc (old)") on the test device to run
+# bayleaf-shell and the toolkit prototypes without a desktop around them. Run on the device: sudo ./setup.sh <user>
 #
 # On-screen keyboard: squeekboard (ADR-0005). It shows itself when a text field gets focus
 # (input-method-v2 + text-input-v3) and reserves its height, so maximized windows shrink above it.
@@ -50,14 +52,14 @@ EOF
 
 chown "$user:$user" "$cfg/rc.xml" "$cfg/autostart"
 
-rm -f /usr/share/wayland-sessions/bayleaf-proto.desktop
-cat > /usr/share/wayland-sessions/bayleaf-dev.desktop <<EOF
+rm -f /usr/share/wayland-sessions/bayleaf-proto.desktop /usr/share/wayland-sessions/bayleaf-dev.desktop
+cat > /usr/share/wayland-sessions/bayleaf-labwc.desktop <<EOF
 [Desktop Entry]
-Name=Bayleaf (dev)
+Name=Bayleaf on labwc (old)
 Comment=labwc + bayleaf-shell for development (Win+0 shell, Win+1/2 prototypes, Win+Esc exit)
 Exec=labwc -C $cfg
 Type=Application
 DesktopNames=Bayleaf
 EOF
 
-echo "session installed: Bayleaf (dev)"
+echo "session installed: Bayleaf on labwc (old)"

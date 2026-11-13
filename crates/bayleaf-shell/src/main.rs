@@ -53,14 +53,19 @@ fn activate(app: &gtk4::Application) {
     let left = Rc::new(rails::LeftRail::new(app, controller, move || {
         launcher.toggle()
     }));
-    let right = rails::right_rail(app);
+    let keyboard = osk::Keyboard::new();
+    let right = rails::right_rail(app, &keyboard);
     left.present();
     right.present();
 
     let model = Rc::new(RefCell::new(Toplevels::new()));
     glib::spawn_future_local(async move {
         while let Ok(event) = rx.recv().await {
+            let focused_before = model.borrow().focused();
             let changed = model.borrow_mut().apply(event);
+            if model.borrow().focused() != focused_before {
+                keyboard.window_changed();
+            }
             if changed {
                 left.show(&model.borrow());
             }
