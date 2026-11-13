@@ -1,14 +1,18 @@
-//! On-screen keyboard (squeekboard, ADR-0005) over its D-Bus interface `sm.puri.OSK0`: the
-//! keyboard button for the right rail, and a stopgap against the keyboard popping up on its own.
+//! On-screen keyboard (squeekboard, ADR-0005): the keyboard button for the right rail.
 //!
-//! The keyboard shows itself whenever a text field gets focus, and many apps focus one when they
-//! open or get switched to (Firefox's address bar, a terminal). Until the compositor only enables
-//! the input method after a touch on the field (our niri fork), the shell hides the keyboard if it
-//! appears within [`SUPPRESS_AFTER_FOCUS`] of a window change. The button always works.
+//! squeekboard shows itself whenever the focused app enables text input, and many apps do that
+//! when they open or get focus (Firefox's address bar, a terminal), so it kept popping up on window
+//! switches. The fix belongs in the compositor: enable the input method only after a touch on the
+//! field (our niri fork). Until then the keyboard runs in *keyboard mode*: off by default, nothing
+//! shows by itself; the rail button turns the mode on (keyboard shown, and it follows text fields
+//! as usual) and off. Off means the GNOME a11y switch is off, which is the only way to stop
+//! squeekboard from showing itself.
+//!
+//! The launcher search turns the mode on temporarily while the launcher is open.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use gtk4::gio;
 use gtk4::prelude::*;
@@ -16,54 +20,96 @@ use gtk4::prelude::*;
 const BUS_NAME: &str = "sm.puri.OSK0";
 const OBJECT_PATH: &str = "/sm/puri/OSK0";
 const INTERFACE: &str = "sm.puri.OSK0";
+const A11Y_SCHEMA: &str = "org.gnome.desktop.a11y.applications";
+const A11Y_KEY: &str = "screen-keyboard-enabled";
+/// squeekboard sees the a11y switch through dconf, which can take a second on this hardware, and
+/// ignores SetVisible(true) until then: ask again a few times while the mode stays on.
+const SHOW_RETRIES: [Duration; 3] = [
+    Duration::from_millis(300),
+    Duration::from_millis(1000),
+    Duration::from_millis(2000),
+];
 
-/// How long after a window opens or gets switched to the keyboard is kept hidden.
-const SUPPRESS_AFTER_FOCUS: Duration = Duration::from_secs(3);
-
-/// Visibility to request when the button is tapped, given what the keyboard reports.
-pub fn next_visible(current: Option<bool>) -> bool {
-    !current.unwrap_or(false)
+/// Keyboard mode: whether it is on, and whether only for a moment (the launcher search).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Mode {
+    pub on: bool,
+    pub temporary: bool,
 }
 
-/// Whether a keyboard that just became visible should be hidden again.
-pub fn should_suppress(visible: bool, until: Option<Instant>, now: Instant) -> bool {
-    visible && until.is_some_and(|u| now < u)
-}
-
-fn visible(proxy: &gio::DBusProxy) -> Option<bool> {
-    proxy.cached_property("Visible")?.get::<bool>()
-}
-
-fn set_visible(proxy: &gio::DBusProxy, show: bool) {
-    proxy.call(
-        "SetVisible",
-        Some(&(show,).to_variant()),
-        gio::DBusCallFlags::NONE,
-        -1,
-        None::<&gio::Cancellable>,
-        move |res| {
-            if let Err(e) = res {
-                tracing::warn!(error = %e, show, "SetVisible failed");
+impl Mode {
+    /// The rail button: always ends a temporary mode, otherwise flips.
+    pub fn toggled(self) -> Self {
+        if self.on {
+            Self::default()
+        } else {
+            Self {
+                on: true,
+                temporary: false,
             }
-        },
-    );
+        }
+    }
+
+    /// A text field of the shell wants the keyboard; it does not override a mode set by hand.
+    pub fn with_temporary(self) -> Self {
+        if self.on {
+            self
+        } else {
+            Self {
+                on: true,
+                temporary: true,
+            }
+        }
+    }
+
+    /// The shell's text field is gone; only a temporary mode ends.
+    pub fn without_temporary(self) -> Self {
+        if self.temporary {
+            Self::default()
+        } else {
+            self
+        }
+    }
 }
 
 pub struct Keyboard {
     button: gtk4::Button,
-    suppress_until: Rc<Cell<Option<Instant>>>,
+    mode: Rc<Cell<Mode>>,
+    proxy: RefCell<Option<gio::DBusProxy>>,
+    a11y: Option<gio::Settings>,
 }
 
 impl Keyboard {
     /// Connects to the keyboard in the background; the button stays hidden until it is there.
-    pub fn new() -> Self {
+    pub fn new() -> Rc<Self> {
         let button = gtk4::Button::from_icon_name("input-keyboard-symbolic");
         crate::style::name(&button, "On-screen keyboard");
         button.set_visible(false);
-        let suppress_until: Rc<Cell<Option<Instant>>> = Rc::default();
 
-        let b = button.clone();
-        let until = suppress_until.clone();
+        let a11y = gio::SettingsSchemaSource::default()
+            .and_then(|src| src.lookup(A11Y_SCHEMA, true))
+            .map(|_| gio::Settings::new(A11Y_SCHEMA));
+        if a11y.is_none() {
+            tracing::warn!("no {A11Y_SCHEMA} schema; keyboard mode cannot stop auto-show");
+        }
+
+        let kb = Rc::new(Self {
+            button,
+            mode: Rc::default(),
+            proxy: RefCell::default(),
+            a11y,
+        });
+        // Start in a known state: mode off.
+        kb.apply(Mode::default());
+
+        let weak = Rc::downgrade(&kb);
+        kb.button.connect_clicked(move |_| {
+            if let Some(kb) = weak.upgrade() {
+                kb.apply(kb.mode.get().toggled());
+            }
+        });
+
+        let weak = Rc::downgrade(&kb);
         gtk4::glib::spawn_future_local(async move {
             let proxy = match gio::DBusProxy::for_bus_future(
                 gio::BusType::Session,
@@ -81,37 +127,17 @@ impl Keyboard {
                     return;
                 }
             };
-            sync(&b, &proxy);
-
-            let weak = b.downgrade();
-            let u = until.clone();
-            proxy.connect_local("g-properties-changed", false, move |args| {
-                let proxy = args.first()?.get::<gio::DBusProxy>().ok()?;
-                let shown = visible(&proxy) == Some(true);
-                if should_suppress(shown, u.get(), Instant::now()) {
-                    tracing::debug!("keyboard popped up right after a window change; hiding");
-                    set_visible(&proxy, false);
-                }
-                sync(&weak.upgrade()?, &proxy);
-                None
-            });
-            let weak = b.downgrade();
+            let Some(kb) = weak.upgrade() else { return };
+            kb.button.set_visible(proxy.name_owner().is_some());
+            let w = weak.clone();
             proxy.connect_notify_local(Some("g-name-owner"), move |proxy, _| {
-                if let Some(b) = weak.upgrade() {
-                    sync(&b, proxy);
+                if let Some(kb) = w.upgrade() {
+                    kb.button.set_visible(proxy.name_owner().is_some());
                 }
             });
-
-            b.connect_clicked(move |_| {
-                // An explicit tap always wins over the suppression window.
-                until.set(None);
-                set_visible(&proxy, next_visible(visible(&proxy)));
-            });
+            *kb.proxy.borrow_mut() = Some(proxy);
         });
-        Self {
-            button,
-            suppress_until,
-        }
+        kb
     }
 
     /// The rail button.
@@ -119,44 +145,110 @@ impl Keyboard {
         &self.button
     }
 
-    /// Call when a window opened or got focus: keeps the keyboard hidden for a moment.
-    pub fn window_changed(&self) {
-        self.suppress_until
-            .set(Some(Instant::now() + SUPPRESS_AFTER_FOCUS));
+    /// A shell text field was tapped (the launcher search).
+    pub fn show_for_shell_field(&self) {
+        self.apply(self.mode.get().with_temporary());
+    }
+
+    /// The shell text field went away (the launcher closed).
+    pub fn shell_field_gone(&self) {
+        self.apply(self.mode.get().without_temporary());
+    }
+
+    fn apply(&self, mode: Mode) {
+        let changed = mode.on != self.mode.get().on;
+        self.mode.set(mode);
+        if mode.on {
+            self.button.add_css_class("active");
+        } else {
+            self.button.remove_css_class("active");
+        }
+        if !changed && mode.on {
+            return;
+        }
+        // Order matters: the switch first so squeekboard accepts SetVisible(true); when turning
+        // off, hide first, then stop auto-show.
+        if mode.on {
+            self.set_a11y(true);
+            self.set_visible(true);
+            for delay in SHOW_RETRIES {
+                let proxy = self.proxy.borrow().clone();
+                let mode = self.mode.clone();
+                gtk4::glib::timeout_add_local_once(delay, move || {
+                    if let (Some(p), true) = (proxy, mode.get().on) {
+                        call_set_visible(&p, true);
+                    }
+                });
+            }
+        } else {
+            self.set_visible(false);
+            self.set_a11y(false);
+        }
+    }
+
+    fn set_a11y(&self, on: bool) {
+        if let Some(s) = &self.a11y {
+            if let Err(e) = s.set_boolean(A11Y_KEY, on) {
+                tracing::warn!(error = %e, on, "cannot set {A11Y_KEY}");
+            }
+        }
+    }
+
+    fn set_visible(&self, show: bool) {
+        if let Some(proxy) = self.proxy.borrow().as_ref() {
+            call_set_visible(proxy, show);
+        }
     }
 }
 
-fn sync(button: &gtk4::Button, proxy: &gio::DBusProxy) {
-    button.set_visible(proxy.name_owner().is_some());
-    if visible(proxy) == Some(true) {
-        button.add_css_class("active");
-    } else {
-        button.remove_css_class("active");
-    }
+fn call_set_visible(proxy: &gio::DBusProxy, show: bool) {
+    proxy.call(
+        "SetVisible",
+        Some(&(show,).to_variant()),
+        gio::DBusCallFlags::NONE,
+        -1,
+        None::<&gio::Cancellable>,
+        move |res| {
+            if let Err(e) = res {
+                tracing::warn!(error = %e, show, "SetVisible failed");
+            }
+        },
+    );
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    const OFF: Mode = Mode {
+        on: false,
+        temporary: false,
+    };
+    const ON: Mode = Mode {
+        on: true,
+        temporary: false,
+    };
+    const TEMP: Mode = Mode {
+        on: true,
+        temporary: true,
+    };
+
     #[test]
-    fn toggles_reported_state() {
-        assert!(!next_visible(Some(true)));
-        assert!(next_visible(Some(false)));
+    fn button_flips_and_ends_temporary() {
+        assert_eq!(OFF.toggled(), ON);
+        assert_eq!(ON.toggled(), OFF);
+        assert_eq!(TEMP.toggled(), OFF);
     }
 
     #[test]
-    fn unknown_state_shows() {
-        assert!(next_visible(None));
+    fn shell_field_turns_on_only_temporarily() {
+        assert_eq!(OFF.with_temporary(), TEMP);
+        assert_eq!(TEMP.without_temporary(), OFF);
     }
 
     #[test]
-    fn suppresses_only_inside_window_and_when_visible() {
-        let now = Instant::now();
-        let later = now + Duration::from_secs(1);
-        assert!(should_suppress(true, Some(later), now));
-        assert!(!should_suppress(false, Some(later), now));
-        assert!(!should_suppress(true, Some(now), later));
-        assert!(!should_suppress(true, None, now));
+    fn shell_field_keeps_a_mode_set_by_hand() {
+        assert_eq!(ON.with_temporary(), ON);
+        assert_eq!(ON.without_temporary(), ON);
     }
 }

@@ -9,6 +9,7 @@ use gtk4::{gdk, gio, glib};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 use crate::app_search;
+use crate::osk::Keyboard;
 
 const PANEL_WIDTH: i32 = 420;
 const COLUMNS: u32 = 4;
@@ -28,10 +29,11 @@ pub struct Launcher {
     grid: gtk4::FlowBox,
     apps: RefCell<Vec<AppEntry>>,
     query: RefCell<String>,
+    keyboard: Rc<Keyboard>,
 }
 
 impl Launcher {
-    pub fn new(app: &gtk4::Application) -> Rc<Self> {
+    pub fn new(app: &gtk4::Application, keyboard: Rc<Keyboard>) -> Rc<Self> {
         let scrim = layer_window(app, "bayleaf-launcher-scrim", Layer::Top);
         scrim.add_css_class("bayleaf-scrim");
         for edge in [Edge::Left, Edge::Right, Edge::Top, Edge::Bottom] {
@@ -83,6 +85,7 @@ impl Launcher {
             grid,
             apps: RefCell::default(),
             query: RefCell::default(),
+            keyboard,
         });
         launcher.connect_signals();
         launcher.reload();
@@ -120,6 +123,7 @@ impl Launcher {
     }
 
     fn hide(&self) {
+        self.keyboard.shell_field_gone();
         self.panel.set_visible(false);
         self.scrim.set_visible(false);
     }
@@ -178,6 +182,18 @@ impl Launcher {
     }
 
     fn connect_signals(self: &Rc<Self>) {
+        // A tap on the search field brings the keyboard for as long as the launcher is open
+        // (keyboard mode, see osk.rs).
+        let tap = gtk4::GestureClick::new();
+        tap.set_propagation_phase(gtk4::PropagationPhase::Capture);
+        let weak = Rc::downgrade(self);
+        tap.connect_pressed(move |_, _, _, _| {
+            if let Some(l) = weak.upgrade() {
+                l.keyboard.show_for_shell_field();
+            }
+        });
+        self.search.add_controller(tap);
+
         let weak = Rc::downgrade(self);
         self.grid.set_filter_func(move |child| {
             let Some(l) = weak.upgrade() else { return true };

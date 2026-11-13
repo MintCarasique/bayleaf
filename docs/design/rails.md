@@ -53,7 +53,7 @@ Top to bottom:
 | Brightness, volume (collapsed icons) | tap an icon: a vertical slider (~140 px) slides open right below it and pushes the rest of the rail down. **Only one slider is open at a time** — opening another closes the first. Tap the icon again to close; it also closes by itself 5 s after the last touch. |
 | Media controls | shown only while something plays (MPRIS): play/pause, next; tap the cover for the full player in quick settings |
 | Quick settings | tap: panel sliding from the right; also a swipe left from anywhere on the rail |
-| Keyboard (bottom, next to the keyboard itself) | show or hide the on-screen keyboard; it also shows by itself when a text field is tapped |
+| Keyboard (bottom, next to the keyboard itself) | keyboard mode on/off: while on, the keyboard is shown and follows text fields; while off it never shows by itself (ADR-0005). Later: shows when a text field is tapped. |
 | Notifications | tap: notification list; badge with unread count |
 
 **Quick settings panel** slides out from the right rail (≈ 360 px wide): toggles (Wi-Fi, Bluetooth,
@@ -62,7 +62,7 @@ network and Bluetooth device lists, full media player, link to settings.
 
 **Launcher panel** grows from the Start button in the bottom-left corner (≈ 420 px wide, up to the
 full height): app grid (4 columns, 72 px tiles), pinned apps first, search field at the bottom next
-to the thumb. The on-screen keyboard opens only when the search field is tapped; with the dock
+to the thumb. The on-screen keyboard opens when the search field is tapped and closes with the panel; with the dock
 attached, typing anywhere in the panel goes to the search.
 
 ## Tablet, portrait (800 × 1280)

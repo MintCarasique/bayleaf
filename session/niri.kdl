@@ -41,9 +41,9 @@ environment {
 // D-Bus- and systemd-activated services (portals, kded) must see this session's display, or apps
 // hang on portal timeouts at startup; restart a portal left over from an earlier session.
 spawn-sh-at-startup "dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE QT_QPA_PLATFORM GTK_THEME && systemctl --user try-restart xdg-desktop-portal.service"
-// squeekboard flashes up for a moment when it starts with the a11y switch already on: start it
-// with the switch off and turn it on once the keyboard is up.
-spawn-sh-at-startup "gsettings set org.gnome.desktop.a11y.applications screen-keyboard-enabled false; squeekboard >$XDG_RUNTIME_DIR/squeekboard.log 2>&1 & sleep 3; gsettings set org.gnome.desktop.a11y.applications screen-keyboard-enabled true"
+// Keyboard mode (ADR-0005): squeekboard starts with its a11y switch off, so it never shows by
+// itself; the rail button and the launcher search turn it on.
+spawn-sh-at-startup "gsettings set org.gnome.desktop.a11y.applications screen-keyboard-enabled false; squeekboard >$XDG_RUNTIME_DIR/squeekboard.log 2>&1"
 spawn-sh-at-startup "bayleaf-shell >$XDG_RUNTIME_DIR/bayleaf-shell.log 2>&1"
 
 binds {

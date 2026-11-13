@@ -17,6 +17,7 @@ gtk4-layer-shell.workspace = true
 wayland-client.workspace = true
 wayland-protocols-wlr.workspace = true
 async-channel.workspace = true
+niri-ipc.workspace = true
 
 [lints]
 workspace = true

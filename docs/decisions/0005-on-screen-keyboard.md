@@ -26,11 +26,26 @@ its height (an exclusive zone) so maximized windows shrink above it, and switche
 - Dark theme via `GTK_THEME=Adwaita:dark`; layouts from `org.gnome.desktop.input-sources`;
   it only shows when `org.gnome.desktop.a11y.applications screen-keyboard-enabled` is true.
 - The right rail has a keyboard button at the bottom that toggles it over D-Bus
-  (`sm.puri.OSK0.SetVisible`), mainly to hide it.
+  (`sm.puri.OSK0.SetVisible`), mainly to hide it. See the update below for how it works now.
 - Shell surfaces never take focus into a text field on their own; the keyboard should appear only
   when the user taps a field.
 - `bayleaf-osk` stays a placeholder. We write our own only if squeekboard hits a limit that
   matters (split layout for thumbs, gestures, memory); that would be a new ADR.
+
+## Update 2026-11-13: keyboard mode
+On niri, squeekboard showed itself every time an app with a text field got focus: on launch
+(Firefox focuses its address bar), on every switch to a terminal, and in split view. Hiding it from
+the shell right after it appeared caused a visible flash. squeekboard has no "only on touch"
+setting, and with the a11y switch on it shows whenever the input method is activated, which
+Smithay does as soon as the app enables text input.
+
+Until the compositor enables the input method only after a touch on the field (our niri fork),
+the keyboard runs in **keyboard mode**:
+- off by default: the session starts squeekboard with `screen-keyboard-enabled` false, so it never
+  shows by itself (starting it with the switch on also made it flash at login);
+- the right-rail button turns the mode on (switch on + `SetVisible(true)`, retried for 2 s because
+  dconf is slow here) and off (`SetVisible(false)`, switch off);
+- the launcher search turns it on while the launcher is open, unless it was already on by hand.
 
 ## Consequences
 - About **43 MB RSS** for the keyboard process on the reference tablet. It pulls GTK3 and

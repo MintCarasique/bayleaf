@@ -27,6 +27,8 @@ gtk4-layer-shell = "0.8"
 wayland-client = "0.31"
 wayland-protocols-wlr = { version = "0.3", features = ["client"] }
 async-channel = "2"
+# niri IPC types and socket helpers (GPL-3.0-or-later); pinned to the niri we deploy (ADR-0001).
+niri-ipc = "=26.4.0"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

@@ -34,7 +34,9 @@ On niri ([ADR-0001](decisions/0001-compositor-starting-point.md)): stock niri + 
       portals, volume and brightness keys; replaces the labwc dev session
 - [x] Map multitasking actions onto niri IPC; list the compositor changes
       ([niri-integration](design/niri-integration.md))
-- [ ] Shell: niri IPC client; one screen per workspace; open on a half; drop zones
+- [x] Shell: niri IPC client, window list from it; one screen per workspace; long-press menu
+      with Open on the left / right and Close
+- [ ] Shell: drag an app onto a half with drop zones
 - [ ] Show the keyboard only after a touch on the text field (fork)
 - [ ] Title strip (← ☰ ✕) in the niri fork
 - [x] Boots on DRM/KMS with libseat (niri)

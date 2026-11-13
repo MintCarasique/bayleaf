@@ -6,8 +6,8 @@ use gtk4_layer_shell::{Edge, Layer, LayerShell};
 
 use std::rc::Rc;
 
-use crate::toplevel::Controller;
 use crate::toplevel_model::{Toplevel, ToplevelId, Toplevels};
+use crate::windows::{Side, WindowControl};
 use crate::{controls, device, osk, status, style};
 
 pub const RAIL_WIDTH: i32 = 56;
@@ -46,13 +46,13 @@ fn spacer() -> gtk4::Box {
 pub struct LeftRail {
     window: gtk4::ApplicationWindow,
     apps: gtk4::Box,
-    controller: Option<Controller>,
+    controller: Option<Rc<dyn WindowControl>>,
 }
 
 impl LeftRail {
     pub fn new(
         app: &gtk4::Application,
-        controller: Option<Controller>,
+        controller: Option<Rc<dyn WindowControl>>,
         on_start: impl Fn() + 'static,
     ) -> Self {
         let window = rail_window(app, Edge::Left, "left");
@@ -111,7 +111,7 @@ impl LeftRail {
                 &t.title
             },
         );
-        if t.activated {
+        if t.visible {
             b.add_css_class("active");
         }
         if t.minimized {
@@ -125,31 +125,54 @@ impl LeftRail {
             }
         });
         if let Some(c) = &self.controller {
-            attach_app_menu(&b, c.clone(), id);
+            attach_app_menu(&b, c.clone(), id, c.supports_split() && !t.visible);
         }
         b
     }
 }
 
-/// Long press on an app opens its menu. For now it only has Close: until the title strip exists
-/// (docs/design/windows.md) this is the touch way to close a window.
-fn attach_app_menu(button: &gtk4::Button, controller: Controller, id: ToplevelId) {
-    let close = gtk4::Button::with_label("Close");
-    close.add_css_class("bayleaf-menu-item");
+type MenuAction = Box<dyn Fn(&dyn WindowControl)>;
+
+/// Long press on an app opens its menu (docs/design/multitasking.md): open it on a half of the
+/// shown screen, when the compositor can, and Close. Close stays here until the title strip exists
+/// (docs/design/windows.md).
+fn attach_app_menu(
+    button: &gtk4::Button,
+    controller: Rc<dyn WindowControl>,
+    id: ToplevelId,
+    split: bool,
+) {
+    let items = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     let menu = gtk4::Popover::new();
     menu.set_position(gtk4::PositionType::Right);
     menu.set_has_arrow(false);
-    menu.set_child(Some(&close));
+    menu.set_child(Some(&items));
     menu.set_parent(button);
     // The rail rebuilds its buttons on every change; a popover must be unparented by hand.
     let m = menu.clone();
     button.connect_destroy(move |_| m.unparent());
 
-    let m = menu.clone();
-    close.connect_clicked(move |_| {
-        m.popdown();
-        controller.close(id);
-    });
+    let add = |label: &str, action: MenuAction| {
+        let item = gtk4::Button::with_label(label);
+        item.add_css_class("bayleaf-menu-item");
+        let (m, c) = (menu.clone(), controller.clone());
+        item.connect_clicked(move |_| {
+            m.popdown();
+            action(c.as_ref());
+        });
+        items.append(&item);
+    };
+    if split {
+        add(
+            "Open on the left",
+            Box::new(move |c| c.open_on_side(id, Side::Left)),
+        );
+        add(
+            "Open on the right",
+            Box::new(move |c| c.open_on_side(id, Side::Right)),
+        );
+    }
+    add("Close", Box::new(move |c| c.close(id)));
 
     let press = gtk4::GestureLongPress::new();
     press.set_propagation_phase(gtk4::PropagationPhase::Capture);

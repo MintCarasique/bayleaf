@@ -31,6 +31,16 @@ pub struct Controller {
     handles: Handles,
 }
 
+impl crate::windows::WindowControl for Controller {
+    fn activate(&self, id: ToplevelId) {
+        Controller::activate(self, id);
+    }
+
+    fn close(&self, id: ToplevelId) {
+        Controller::close(self, id);
+    }
+}
+
 impl Controller {
     fn handle(&self, id: ToplevelId) -> Option<ZwlrForeignToplevelHandleV1> {
         match self.handles.lock() {
@@ -126,7 +136,7 @@ impl State {
 }
 
 fn id_of(h: &ZwlrForeignToplevelHandleV1) -> ToplevelId {
-    h.id().protocol_id()
+    ToplevelId::from(h.id().protocol_id())
 }
 
 impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for State {
@@ -211,6 +221,7 @@ impl Dispatch<ZwlrForeignToplevelHandleV1, ()> for State {
                 if let Some(t) = state.pending.get_mut(&id) {
                     let s = parse_states(&raw);
                     t.activated = s.activated;
+                    t.visible = s.activated;
                     t.minimized = s.minimized;
                     t.maximized = s.maximized;
                     t.fullscreen = s.fullscreen;

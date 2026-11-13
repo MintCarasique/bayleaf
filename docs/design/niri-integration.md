@@ -34,7 +34,7 @@ never comes into play, and a pair stays a pair when you switch away and back.
 | Overview | `ToggleOverview` (niri's zoomed-out workspaces; pairs show as one row) | Cards in our style, horizontal |
 | Switch animation | niri's vertical workspace slide | Crossfade (scale 0.94 → 1, opacity) |
 | Drop zones while dragging an icon | Shell: a full-screen layer surface over the work area | — |
-| Keyboard only after touching a field | — (shell hides it for 3 s after a window change, [ADR-0005](../decisions/0005-on-screen-keyboard.md)) | Enable the input method only after a touch on the focused surface |
+| Keyboard only after touching a field | — (keyboard mode: off until the rail button or the launcher search turns it on, [ADR-0005](../decisions/0005-on-screen-keyboard.md)) | Enable the input method only after a touch on the focused surface |
 | Edge swipes, dock-driven mode switch | — | Yes |
 
 ## Window list: foreign-toplevel or niri IPC

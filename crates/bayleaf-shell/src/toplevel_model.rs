@@ -2,8 +2,8 @@
 //!
 //! Kept free of Wayland and GTK types so it can be unit-tested.
 
-/// Stable identifier of a toplevel for the lifetime of its protocol object.
-pub type ToplevelId = u32;
+/// Stable identifier of a window: the foreign-toplevel protocol id, or the niri window id.
+pub type ToplevelId = u64;
 
 /// Snapshot of one toplevel, sent when the compositor finishes a batch of changes (`done`).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -11,7 +11,10 @@ pub struct Toplevel {
     pub id: ToplevelId,
     pub app_id: String,
     pub title: String,
+    /// Has keyboard focus.
     pub activated: bool,
+    /// On screen right now: the focused window, or both halves of a pair on niri.
+    pub visible: bool,
     pub minimized: bool,
     pub maximized: bool,
     pub fullscreen: bool,
@@ -22,6 +25,8 @@ pub struct Toplevel {
 pub enum ToplevelEvent {
     Updated(Toplevel),
     Closed(ToplevelId),
+    /// The whole list at once (niri IPC sends full state).
+    Snapshot(Vec<Toplevel>),
     /// The compositor does not implement wlr-foreign-toplevel-management.
     Unsupported,
 }
@@ -86,6 +91,12 @@ impl Toplevels {
                 self.items.retain(|i| i.id != id);
                 self.items.len() != before
             }
+            ToplevelEvent::Snapshot(items) => {
+                let changed = !self.supported || self.items != items;
+                self.supported = true;
+                self.items = items;
+                changed
+            }
             ToplevelEvent::Unsupported => {
                 let changed = self.supported || !self.items.is_empty();
                 self.supported = false;
@@ -93,11 +104,6 @@ impl Toplevels {
                 changed
             }
         }
-    }
-
-    /// The focused (activated) window, if any.
-    pub fn focused(&self) -> Option<ToplevelId> {
-        self.items.iter().find(|t| t.activated).map(|t| t.id)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Toplevel> {
@@ -168,15 +174,12 @@ mod tests {
     }
 
     #[test]
-    fn focused_follows_activated_state() {
+    fn snapshot_replaces_and_reports_changes_only() {
         let mut m = Toplevels::new();
-        assert_eq!(m.focused(), None);
-        m.apply(ToplevelEvent::Updated(top(1, "a")));
-        assert_eq!(m.focused(), None);
-        let mut b = top(2, "b");
-        b.activated = true;
-        m.apply(ToplevelEvent::Updated(b));
-        assert_eq!(m.focused(), Some(2));
+        assert!(m.apply(ToplevelEvent::Snapshot(vec![top(1, "a"), top(2, "b")])));
+        assert!(!m.apply(ToplevelEvent::Snapshot(vec![top(1, "a"), top(2, "b")])));
+        assert!(m.apply(ToplevelEvent::Snapshot(vec![top(2, "b")])));
+        assert_eq!(m.iter().count(), 1);
     }
 
     #[test]
