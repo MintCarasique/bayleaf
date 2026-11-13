@@ -156,6 +156,9 @@ Open before accepting:
 3. **Attribution and licence.** niri is GPL-3.0-or-later, same as Bayleaf; the fork keeps its
    history and copyright notices.
 
+The fork lives at [MintCarasique/niri](https://github.com/MintCarasique/niri), branch `bayleaf`
+(see [design/niri-integration.md](../design/niri-integration.md) for what it changes).
+
 Follow-ups (tracked in the roadmap): map [multitasking](../design/multitasking.md) onto niri IPC
 and list the compositor changes; prototype the title strip in niri's renderer; decide on
 Xwayland (`xwayland-satellite`).

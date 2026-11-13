@@ -36,7 +36,9 @@ On niri ([ADR-0001](decisions/0001-compositor-starting-point.md)): stock niri + 
       ([niri-integration](design/niri-integration.md))
 - [x] Shell: niri IPC client, window list from it; one screen per workspace; long-press menu
       with Open on the left / right and Close
-- [ ] Shell: drag an app onto a half with drop zones
+- [x] Shell: drag an app onto a half with drop zones; Full screen takes it out of a pair
+- [x] niri fork (MintCarasique/niri, branch `bayleaf`): `screen-split` layout, new windows on
+      their own screen, `MoveWindowToWorkspaceColumn`, crossfade-style workspace switch
 - [ ] Show the keyboard only after a touch on the text field (fork)
 - [ ] Title strip (← ☰ ✕) in the niri fork
 - [x] Boots on DRM/KMS with libseat (niri)

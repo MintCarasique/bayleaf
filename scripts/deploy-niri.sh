@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build the compositor pieces Bayleaf runs on (ADR-0001) and copy them to a test device:
-# niri and xwayland-satellite, at pinned versions. Neither is packaged in Debian trixie.
+# our niri fork (MintCarasique/niri, branch bayleaf, on top of niri v26.04) and
+# xwayland-satellite, at pinned revisions. Neither is packaged in Debian trixie.
 #
 #   BAYLEAF_DEVICE=user@host scripts/deploy-niri.sh
 #
@@ -10,23 +11,26 @@
 # libxcb-cursor-dev.
 set -euo pipefail
 
-NIRI_VERSION=v26.04
+# The fork adds screen-split and MoveWindowToWorkspaceColumn (docs/design/niri-integration.md).
+NIRI_REPO=https://github.com/MintCarasique/niri.git
+NIRI_REV=3282e2b6
 XWS_VERSION=v0.8.3
 
 device="${BAYLEAF_DEVICE:?set BAYLEAF_DEVICE=user@host (or an ssh config alias)}"
 deps="${BAYLEAF_DEPS_DIR:-$HOME/.cache/bayleaf-deps}"
 mkdir -p "$deps"
 
-# fetch <url> <dir> <tag>: clone once, then check out the pinned tag.
+# fetch <url> <dir> <rev>: clone once, then check out the pinned tag or commit.
 fetch() {
   if [[ ! -d "$deps/$2" ]]; then
     git clone -q "$1" "$deps/$2"
   fi
-  git -C "$deps/$2" fetch -q --tags
+  git -C "$deps/$2" remote set-url origin "$1"
+  git -C "$deps/$2" fetch -q --tags origin '+refs/heads/*:refs/remotes/origin/*'
   git -C "$deps/$2" checkout -q "$3"
 }
 
-fetch https://github.com/YaLTeR/niri.git niri "$NIRI_VERSION"
+fetch "$NIRI_REPO" niri "$NIRI_REV"
 fetch https://github.com/Supreeeme/xwayland-satellite.git xwayland-satellite "$XWS_VERSION"
 
 # No screencasting (needs PipeWire and xdg-desktop-portal-gnome); D-Bus and systemd stay on.

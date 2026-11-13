@@ -60,8 +60,8 @@ landing), and one duration, **250 ms**. Nothing animates while idle.
 | Transition | Incoming | Outgoing / others |
 |---|---|---|
 | Switch screens (tap in the rail, overview) — **crossfade** | scale 0.94 → 1, opacity 0 → 1, on top | scale 1 → 1.03, opacity → 0 |
-| Open on a half | slides in from its edge of the screen (translate ∓105 % → 0) | the shown app resizes to the other half in the same motion |
-| Replace a half | as above | the replaced app moves 40 % towards its edge and fades out |
+| Open on a half | fades in where the shown app makes room (scale 0.94 → 1, opacity 0 → 1) | the shown app shrinks to the other half in the same motion; nothing slides in from an edge |
+| Replace a half | as above, in one step (no frame with the other half alone at full width) | the replaced app leaves for a screen of its own without flying across |
 | Swap sides | — | both windows move to their new halves |
 | Divider released past the threshold | the remaining app grows to full width | the leaving app slides out through its edge |
 | Divider released elsewhere | — | both windows spring back to 50/50 |

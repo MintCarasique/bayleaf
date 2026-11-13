@@ -6,6 +6,7 @@ mod accordion;
 mod app_search;
 mod controls;
 mod device;
+mod dropzones;
 mod launcher;
 mod layout;
 mod niri;

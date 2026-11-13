@@ -1,10 +1,12 @@
 //! Bayleaf's tablet window model on top of niri, as pure functions (docs/design/niri-integration.md):
-//! one screen = one niri workspace, holding one full-width column or two half-width columns.
+//! one screen = one niri workspace, holding one app or a pair.
+//!
+//! Widths and the view are niri's job: our fork's `screen-split` layout option makes one column
+//! fill the screen and two columns split it in half, without scrolling, and opens new windows on
+//! a screen of their own. The shell only decides which window goes to which screen and side.
 //!
 //! Takes a snapshot of niri's windows and workspaces and returns the commands to send; kept free
 //! of IPC and GTK so it can be unit-tested.
-
-use std::collections::HashMap;
 
 use crate::toplevel_model::Toplevel;
 use crate::windows::Side;
@@ -35,11 +37,6 @@ pub struct Snapshot {
     pub workspaces: Vec<Ws>,
 }
 
-/// Windows we made half-width, so they can grow back when they end up alone. `true` once a
-/// snapshot has shown the window next to its partner: until then, events still describing the
-/// state from before the move must not make it grow back.
-pub type Halves = HashMap<u64, bool>;
-
 /// One niri action, in Bayleaf terms.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Cmd {
@@ -50,12 +47,15 @@ pub enum Cmd {
         window: u64,
         workspace: u64,
     },
-    SetWidthPercent {
-        window: u64,
-        percent: f64,
-    },
     /// Move the focused column to a 1-based index in its workspace.
     MoveFocusedColumnTo(usize),
+    /// Move a window to a workspace as a new column at a 1-based index and focus it, in one step
+    /// (our fork's `MoveWindowToWorkspaceColumn`).
+    PlaceInColumn {
+        window: u64,
+        workspace: u64,
+        column: usize,
+    },
 }
 
 impl Snapshot {
@@ -91,6 +91,12 @@ impl Snapshot {
             .max_by_key(|ws| ws.idx)
     }
 
+    /// Whether the window shares its screen with another tiled window.
+    fn is_paired(&self, win: &Win) -> bool {
+        win.workspace
+            .is_some_and(|ws| self.tiled_in(ws).iter().any(|w| w.id != win.id))
+    }
+
     /// The rail's view: windows in the order they were opened; the focused screen is visible.
     pub fn toplevels(&self) -> Vec<Toplevel> {
         let shown = self.focused_workspace().map(|ws| ws.id);
@@ -111,31 +117,36 @@ impl Snapshot {
     }
 }
 
-/// A window just opened. If it landed next to another app, move it to a screen of its own.
-pub fn place_new(s: &Snapshot, id: u64) -> Vec<Cmd> {
-    let Some(win) = s.window(id) else {
-        return Vec::new();
-    };
-    let Some(ws) = win.workspace.and_then(|w| s.workspace(w)) else {
-        return Vec::new();
-    };
-    if win.floating || s.tiled_in(ws.id).iter().all(|w| w.id == id) {
-        return Vec::new();
-    }
-    match s.empty_workspace_on(&ws.output) {
+/// Moves the window to the empty workspace of its output and shows it there.
+fn to_own_screen(s: &Snapshot, win: &Win) -> Vec<Cmd> {
+    let output = win
+        .workspace
+        .and_then(|w| s.workspace(w))
+        .and_then(|ws| ws.output.clone());
+    match s.empty_workspace_on(&output) {
         Some(empty) => vec![
             Cmd::MoveToWorkspace {
-                window: id,
+                window: win.id,
                 workspace: empty.id,
             },
-            Cmd::Focus(id),
+            Cmd::Focus(win.id),
         ],
+        None => vec![Cmd::Focus(win.id)],
+    }
+}
+
+/// Shows the window alone: out of its pair onto a screen of its own, or just focused.
+pub fn open_alone(s: &Snapshot, id: u64) -> Vec<Cmd> {
+    match s.window(id) {
+        Some(win) if !win.floating && s.is_paired(win) => to_own_screen(s, win),
+        Some(_) => vec![Cmd::Focus(id)],
         None => Vec::new(),
     }
 }
 
-/// Opens `id` on one half of the shown screen, next to what is there.
-pub fn open_on_side(s: &Snapshot, id: u64, side: Side, halves: &mut Halves) -> Vec<Cmd> {
+/// Opens `id` on one half of the shown screen, next to what is there. On a full pair, the app on
+/// that side gets replaced and moves to a screen of its own.
+pub fn open_on_side(s: &Snapshot, id: u64, side: Side) -> Vec<Cmd> {
     let (Some(win), Some(shown)) = (s.window(id), s.focused_workspace()) else {
         return Vec::new();
     };
@@ -158,88 +169,13 @@ pub fn open_on_side(s: &Snapshot, id: u64, side: Side, halves: &mut Halves) -> V
         return vec![Cmd::Focus(id)];
     }
 
-    let mut cmds = Vec::new();
-
-    // The partner it leaves behind on its old screen grows back to full width.
-    if let Some(from) = win.workspace {
-        let left_behind: Vec<&Win> = s
-            .tiled_in(from)
-            .into_iter()
-            .filter(|w| w.id != id)
-            .collect();
-        if let [partner] = left_behind.as_slice() {
-            if halves.remove(&partner.id).is_some() {
-                cmds.push(Cmd::SetWidthPercent {
-                    window: partner.id,
-                    percent: 100.0,
-                });
-            }
-        }
-    }
-
-    // A full pair: the app on the chosen side moves to a screen of its own.
-    let stays = if others.len() >= 2 {
-        let replaced = match side {
-            Side::Left => others[0],
-            Side::Right => others[others.len() - 1],
-        };
-        if let Some(empty) = s.empty_workspace_on(&shown.output) {
-            cmds.push(Cmd::MoveToWorkspace {
-                window: replaced.id,
-                workspace: empty.id,
-            });
-        }
-        cmds.push(Cmd::SetWidthPercent {
-            window: replaced.id,
-            percent: 100.0,
-        });
-        halves.remove(&replaced.id);
-        others.iter().find(|w| w.id != replaced.id).map(|w| w.id)
-    } else {
-        Some(others[0].id)
-    };
-
-    cmds.push(Cmd::MoveToWorkspace {
+    // On a full pair, niri (screen-split) moves the app on that side to a screen of its own in
+    // the same step.
+    vec![Cmd::PlaceInColumn {
         window: id,
         workspace: shown.id,
-    });
-    cmds.push(Cmd::Focus(id));
-    for w in std::iter::once(id).chain(stays) {
-        cmds.push(Cmd::SetWidthPercent {
-            window: w,
-            percent: 50.0,
-        });
-        halves.insert(w, false);
-    }
-    cmds.push(Cmd::MoveFocusedColumnTo(index));
-    cmds
-}
-
-/// A half-width window left alone on its screen (its partner closed or moved) grows back.
-/// Also confirms halves that are now seen in a pair, and forgets windows that no longer exist.
-pub fn fill_lonely(s: &Snapshot, halves: &mut Halves) -> Vec<Cmd> {
-    halves.retain(|id, _| s.window(*id).is_some());
-    let mut cmds = Vec::new();
-    for ws in &s.workspaces {
-        let tiled = s.tiled_in(ws.id);
-        if tiled.len() >= 2 {
-            for w in &tiled {
-                if let Some(confirmed) = halves.get_mut(&w.id) {
-                    *confirmed = true;
-                }
-            }
-        }
-        if let [only] = tiled.as_slice() {
-            if halves.get(&only.id) == Some(&true) {
-                halves.remove(&only.id);
-                cmds.push(Cmd::SetWidthPercent {
-                    window: only.id,
-                    percent: 100.0,
-                });
-            }
-        }
-    }
-    cmds
+        column: index,
+    }]
 }
 
 #[cfg(test)]
@@ -272,153 +208,50 @@ mod tests {
         }
     }
 
-    #[test]
-    fn new_window_next_to_another_moves_to_the_empty_screen() {
-        let mut s = two_screens();
-        s.windows.push(win(30, 1, 2));
-        assert_eq!(
-            place_new(&s, 30),
-            vec![
-                Cmd::MoveToWorkspace {
-                    window: 30,
-                    workspace: 3
-                },
-                Cmd::Focus(30)
-            ]
-        );
+    fn move_to(window: u64, workspace: u64) -> Cmd {
+        Cmd::MoveToWorkspace { window, workspace }
     }
 
-    #[test]
-    fn new_window_alone_or_floating_stays() {
-        let mut s = two_screens();
-        s.windows.push(win(30, 3, 1));
-        assert!(place_new(&s, 30).is_empty());
-
-        let mut s = two_screens();
-        let mut dialog = win(31, 1, 0);
-        dialog.floating = true;
-        dialog.column = None;
-        s.windows.push(dialog);
-        assert!(place_new(&s, 31).is_empty());
+    fn place(window: u64, workspace: u64, column: usize) -> Cmd {
+        Cmd::PlaceInColumn {
+            window,
+            workspace,
+            column,
+        }
     }
 
     #[test]
     fn open_on_left_pairs_with_the_shown_app() {
-        let s = two_screens();
-        let mut halves = Halves::new();
         assert_eq!(
-            open_on_side(&s, 20, Side::Left, &mut halves),
-            vec![
-                Cmd::MoveToWorkspace {
-                    window: 20,
-                    workspace: 1
-                },
-                Cmd::Focus(20),
-                Cmd::SetWidthPercent {
-                    window: 20,
-                    percent: 50.0
-                },
-                Cmd::SetWidthPercent {
-                    window: 10,
-                    percent: 50.0
-                },
-                Cmd::MoveFocusedColumnTo(1),
-            ]
+            open_on_side(&two_screens(), 20, Side::Left),
+            vec![place(20, 1, 1)]
         );
-        assert_eq!(halves, Halves::from([(10, false), (20, false)]));
     }
 
     #[test]
     fn open_on_right_of_a_pair_replaces_the_right_app() {
         let mut s = two_screens();
         s.windows.push(win(11, 1, 2));
-        s.windows.push(win(30, 4, 1));
-        s.workspaces.push(ws(4, 4, false));
-        s.workspaces.push(ws(5, 5, false));
-        let mut halves = Halves::from([(10, true), (11, true)]);
-        let cmds = open_on_side(&s, 30, Side::Right, &mut halves);
-        assert_eq!(
-            cmds[..2],
-            [
-                Cmd::MoveToWorkspace {
-                    window: 11,
-                    workspace: 5
-                },
-                Cmd::SetWidthPercent {
-                    window: 11,
-                    percent: 100.0
-                },
-            ]
-        );
-        assert_eq!(cmds.last(), Some(&Cmd::MoveFocusedColumnTo(2)));
-        assert_eq!(halves, Halves::from([(10, false), (30, false)]));
-    }
-
-    #[test]
-    fn moving_out_of_a_pair_grows_the_partner_back() {
-        let mut s = two_screens();
-        s.windows.push(win(21, 2, 2));
-        let mut halves = Halves::from([(20, true), (21, true)]);
-        let cmds = open_on_side(&s, 21, Side::Right, &mut halves);
-        assert_eq!(
-            cmds[0],
-            Cmd::SetWidthPercent {
-                window: 20,
-                percent: 100.0
-            }
-        );
-        assert!(!halves.contains_key(&20));
+        assert_eq!(open_on_side(&s, 20, Side::Right), vec![place(20, 1, 2)]);
     }
 
     #[test]
     fn swapping_sides_within_a_pair() {
         let mut s = two_screens();
         s.windows.push(win(11, 1, 2));
-        let mut halves = Halves::from([(10, true), (11, true)]);
         assert_eq!(
-            open_on_side(&s, 11, Side::Left, &mut halves),
+            open_on_side(&s, 11, Side::Left),
             vec![Cmd::Focus(11), Cmd::MoveFocusedColumnTo(1)]
         );
-        assert!(open_on_side(&s, 10, Side::Left, &mut halves).is_empty());
+        assert!(open_on_side(&s, 10, Side::Left).is_empty());
     }
 
     #[test]
-    fn lonely_half_grows_back_and_dead_ids_are_forgotten() {
-        let s = two_screens();
-        let mut halves = Halves::from([(10, true), (99, true)]);
-        assert_eq!(
-            fill_lonely(&s, &mut halves),
-            vec![Cmd::SetWidthPercent {
-                window: 10,
-                percent: 100.0
-            }]
-        );
-        assert!(halves.is_empty());
-    }
-
-    #[test]
-    fn unconfirmed_half_waits_for_the_pair() {
-        // Right after "open on the left": events from before the move still show 10 alone.
-        let s = two_screens();
-        let mut halves = Halves::from([(10, false), (20, false)]);
-        assert!(fill_lonely(&s, &mut halves).is_empty());
-
-        // The pair shows up: both confirmed, nothing to do.
-        let mut paired = two_screens();
-        paired.windows[1].workspace = Some(1);
-        paired.windows[1].column = Some(2);
-        assert!(fill_lonely(&paired, &mut halves).is_empty());
-        assert_eq!(halves, Halves::from([(10, true), (20, true)]));
-
-        // 20 closes: 10 is alone and confirmed, so it grows back.
-        paired.windows.pop();
-        assert_eq!(
-            fill_lonely(&paired, &mut halves),
-            vec![Cmd::SetWidthPercent {
-                window: 10,
-                percent: 100.0
-            }]
-        );
+    fn open_alone_takes_an_app_out_of_its_pair() {
+        let mut s = two_screens();
+        s.windows.push(win(11, 1, 2));
+        assert_eq!(open_alone(&s, 11), vec![move_to(11, 3), Cmd::Focus(11)]);
+        assert_eq!(open_alone(&s, 20), vec![Cmd::Focus(20)]);
     }
 
     #[test]

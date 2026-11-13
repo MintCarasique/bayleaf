@@ -17,6 +17,9 @@ input {
 }
 
 layout {
+    // Bayleaf fork (ADR-0001): a workspace is one screen; one column fills it, two split it in
+    // half, no scrolling. The shell puts at most two windows on a workspace.
+    screen-split
     gaps 0
     center-focused-column "never"
     default-column-width { proportion 1.0; }

@@ -6,6 +6,7 @@ use gtk4_layer_shell::{Edge, Layer, LayerShell};
 
 use std::rc::Rc;
 
+use crate::dropzones::{DropZones, Target};
 use crate::toplevel_model::{Toplevel, ToplevelId, Toplevels};
 use crate::windows::{Side, WindowControl};
 use crate::{controls, device, osk, status, style};
@@ -47,6 +48,7 @@ pub struct LeftRail {
     window: gtk4::ApplicationWindow,
     apps: gtk4::Box,
     controller: Option<Rc<dyn WindowControl>>,
+    drop_zones: Rc<DropZones>,
 }
 
 impl LeftRail {
@@ -56,6 +58,7 @@ impl LeftRail {
         on_start: impl Fn() + 'static,
     ) -> Self {
         let window = rail_window(app, Edge::Left, "left");
+        let drop_zones = Rc::new(DropZones::new(app));
         let col = rail_column();
         let apps = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
         col.append(&apps);
@@ -73,6 +76,7 @@ impl LeftRail {
             window,
             apps,
             controller,
+            drop_zones,
         }
     }
 
@@ -95,13 +99,15 @@ impl LeftRail {
             return;
         }
         let theme = gtk4::IconTheme::for_display(&WidgetExt::display(&self.window));
+        let shown = toplevels.iter().filter(|t| t.visible).count();
         for t in toplevels.iter() {
-            self.apps.append(&self.app_button(t, &theme));
+            self.apps.append(&self.app_button(t, &theme, shown));
         }
     }
 
-    fn app_button(&self, t: &Toplevel, theme: &gtk4::IconTheme) -> gtk4::Button {
-        let b = gtk4::Button::from_icon_name(&icon_for(&t.app_id, theme));
+    fn app_button(&self, t: &Toplevel, theme: &gtk4::IconTheme, shown: usize) -> gtk4::Button {
+        let icon = icon_for(&t.app_id, theme);
+        let b = gtk4::Button::from_icon_name(&icon);
         b.set_halign(gtk4::Align::Center);
         style::name(
             &b,
@@ -125,22 +131,107 @@ impl LeftRail {
             }
         });
         if let Some(c) = &self.controller {
-            attach_app_menu(&b, c.clone(), id, c.supports_split() && !t.visible);
+            // Split only makes sense for an app that is not on screen, next to one that is.
+            // Split only makes sense for an app that is not on screen, next to one that is;
+            // "Full screen" for one half of the pair on screen.
+            let split = c.supports_split() && !t.visible && shown > 0;
+            let alone = c.supports_split() && t.visible && shown > 1;
+            attach_app_menu(&b, c.clone(), id, split, alone);
+            attach_drag(
+                &b,
+                &self.window,
+                DragTarget {
+                    zones: self.drop_zones.clone(),
+                    controller: c.clone(),
+                    id,
+                    icon,
+                    split,
+                },
+            );
         }
         b
     }
 }
 
+/// Horizontal distance a finger has to move off the rail before a drag starts; less is a tap or
+/// a long press.
+const DRAG_START: f64 = 24.0;
+
+/// What a drag from one rail button can do.
+struct DragTarget {
+    zones: Rc<DropZones>,
+    controller: Rc<dyn WindowControl>,
+    id: ToplevelId,
+    icon: String,
+    split: bool,
+}
+
+/// Dragging an app off the rail shows drop zones (docs/design/multitasking.md): the left or right
+/// half when it can go next to the shown app, otherwise one full-screen zone.
+fn attach_drag(button: &gtk4::Button, rail: &gtk4::ApplicationWindow, target: DragTarget) {
+    let drag = gtk4::GestureDrag::new();
+    drag.set_propagation_phase(gtk4::PropagationPhase::Capture);
+    let start = Rc::new(std::cell::Cell::new((0.0, 0.0)));
+    let active = Rc::new(std::cell::Cell::new(false));
+    let over = Rc::new(std::cell::Cell::new(None::<Target>));
+    let target = Rc::new(target);
+
+    {
+        let (start, button, rail) = (start.clone(), button.downgrade(), rail.downgrade());
+        drag.connect_drag_begin(move |_, x, y| {
+            // Rail coordinates are screen coordinates: the left rail sits at the origin.
+            let p = gtk4::graphene::Point::new(x as f32, y as f32);
+            if let (Some(b), Some(r)) = (button.upgrade(), rail.upgrade()) {
+                if let Some(p) = b.compute_point(&r, &p) {
+                    start.set((f64::from(p.x()), f64::from(p.y())));
+                }
+            }
+        });
+    }
+    {
+        let (start, active, over, target) =
+            (start.clone(), active.clone(), over.clone(), target.clone());
+        drag.connect_drag_update(move |gesture, dx, dy| {
+            if !active.get() {
+                if dx < DRAG_START {
+                    return;
+                }
+                // Ours now: no click, no long-press menu.
+                gesture.set_state(gtk4::EventSequenceState::Claimed);
+                active.set(true);
+                target.zones.begin(&target.icon, target.split);
+            }
+            let (sx, sy) = start.get();
+            over.set(target.zones.update(sx + dx, sy + dy));
+        });
+    }
+    drag.connect_drag_end(move |_, _, _| {
+        if !active.replace(false) {
+            return;
+        }
+        target.zones.end();
+        let t = &target;
+        match over.take() {
+            Some(Target::Left) => t.controller.open_on_side(t.id, Side::Left),
+            Some(Target::Right) => t.controller.open_on_side(t.id, Side::Right),
+            Some(Target::Full) => t.controller.open_alone(t.id),
+            None => {}
+        }
+    });
+    button.add_controller(drag);
+}
+
 type MenuAction = Box<dyn Fn(&dyn WindowControl)>;
 
 /// Long press on an app opens its menu (docs/design/multitasking.md): open it on a half of the
-/// shown screen, when the compositor can, and Close. Close stays here until the title strip exists
+/// shown screen or take it out of its pair, when the compositor can, and Close. Close stays here until the title strip exists
 /// (docs/design/windows.md).
 fn attach_app_menu(
     button: &gtk4::Button,
     controller: Rc<dyn WindowControl>,
     id: ToplevelId,
     split: bool,
+    alone: bool,
 ) {
     let items = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     let menu = gtk4::Popover::new();
@@ -171,6 +262,9 @@ fn attach_app_menu(
             "Open on the right",
             Box::new(move |c| c.open_on_side(id, Side::Right)),
         );
+    }
+    if alone {
+        add("Full screen", Box::new(move |c| c.open_alone(id)));
     }
     add("Close", Box::new(move |c| c.close(id)));
 

@@ -18,6 +18,13 @@ window.bayleaf-rail.right { border-left:  1px solid #2f3a2f; }
 .bayleaf-rail button image { -gtk-icon-size: 24px; }
 .bayleaf-rail label.status { font-size: 12px; }
 .bayleaf-rail popover button.bayleaf-menu-item { min-height: 48px; min-width: 120px; padding: 0 16px; }
+window.bayleaf-dropzones { background: transparent; }
+.bayleaf-zone {
+  margin: 12px; border: 2px dashed rgba(255, 255, 255, 0.55); border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25); color: #e6e6e6;
+}
+.bayleaf-zone.on { background: rgba(143, 196, 143, 0.35); border-color: #8fc48f; }
+.bayleaf-ghost { background: #2f3a2f; border-radius: 12px; outline: 1px solid #8fc48f; color: #e6e6e6; }
 window.bayleaf-scrim { background: rgba(0, 0, 0, 0.25); }
 window.bayleaf-launcher { background: #1e211e; color: #e6e6e6; border-right: 1px solid #2f3a2f; }
 .bayleaf-launcher flowboxchild { padding: 0; border-radius: 8px; }

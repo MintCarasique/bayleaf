@@ -3,9 +3,13 @@
 //! One background thread follows niri's event stream and turns it into [`Snapshot`]s for the GTK
 //! thread; another sends actions, one connection per action as niri expects. The window model
 //! itself (one screen per workspace, split view) lives in [`crate::layout`].
+//!
+//! Actions that only exist in our niri fork are sent as raw JSON, so the shell can keep using the
+//! published `niri-ipc` crate.
 
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::io::{BufRead, BufReader, Write};
+use std::os::unix::net::UnixStream;
 use std::rc::Rc;
 use std::sync::mpsc;
 
@@ -14,7 +18,7 @@ use async_channel::Sender;
 use gtk4::glib;
 use niri_ipc::socket::{SOCKET_PATH_ENV, Socket};
 use niri_ipc::state::{EventStreamState, EventStreamStatePart};
-use niri_ipc::{Action, Event, Reply, Request, Response, SizeChange, WorkspaceReferenceArg};
+use niri_ipc::{Action, Event, Reply, Request, Response, WorkspaceReferenceArg};
 
 use crate::layout::{self, Cmd, Snapshot, Win, Ws};
 use crate::toplevel_model::{ToplevelEvent, ToplevelId};
@@ -28,10 +32,6 @@ pub fn available() -> bool {
 /// State on the GTK thread.
 pub struct Niri {
     snapshot: RefCell<Snapshot>,
-    /// Windows we made half-width; they grow back when left alone.
-    halves: RefCell<layout::Halves>,
-    /// Window ids already seen; `None` until niri sent the initial window list.
-    known: RefCell<Option<HashSet<u64>>>,
     actions: mpsc::Sender<Vec<Cmd>>,
 }
 
@@ -47,7 +47,7 @@ pub fn start(events: Sender<ToplevelEvent>) -> anyhow::Result<Rc<Niri>> {
         Err(e) => anyhow::bail!("niri refused the event stream: {e}"),
     }
 
-    let (snap_tx, snap_rx) = async_channel::unbounded::<(Snapshot, bool)>();
+    let (snap_tx, snap_rx) = async_channel::unbounded::<Snapshot>();
     std::thread::Builder::new()
         .name("niri-events".into())
         .spawn(move || follow_events(socket, &snap_tx))
@@ -59,7 +59,10 @@ pub fn start(events: Sender<ToplevelEvent>) -> anyhow::Result<Rc<Niri>> {
         .spawn(move || {
             for batch in act_rx {
                 for cmd in batch {
-                    send_action(to_action(&cmd));
+                    match to_action(&cmd) {
+                        Outgoing::Typed(action) => send_action(action),
+                        Outgoing::Raw(json) => send_raw(&json),
+                    }
                 }
             }
         })
@@ -67,14 +70,12 @@ pub fn start(events: Sender<ToplevelEvent>) -> anyhow::Result<Rc<Niri>> {
 
     let niri = Rc::new(Niri {
         snapshot: RefCell::default(),
-        halves: RefCell::default(),
-        known: RefCell::default(),
         actions: act_tx,
     });
     let n = niri.clone();
     glib::spawn_future_local(async move {
-        while let Ok((snapshot, windows_loaded)) = snap_rx.recv().await {
-            n.on_snapshot(snapshot, windows_loaded);
+        while let Ok(snapshot) = snap_rx.recv().await {
+            *n.snapshot.borrow_mut() = snapshot;
             let list = n.snapshot.borrow().toplevels();
             if events.send(ToplevelEvent::Snapshot(list)).await.is_err() {
                 break;
@@ -86,26 +87,6 @@ pub fn start(events: Sender<ToplevelEvent>) -> anyhow::Result<Rc<Niri>> {
 }
 
 impl Niri {
-    fn on_snapshot(&self, snapshot: Snapshot, windows_loaded: bool) {
-        let ids: HashSet<u64> = snapshot.windows.iter().map(|w| w.id).collect();
-        let mut cmds = Vec::new();
-        if windows_loaded {
-            let mut known = self.known.borrow_mut();
-            if let Some(seen) = known.as_ref() {
-                for id in ids.difference(seen) {
-                    cmds.extend(layout::place_new(&snapshot, *id));
-                }
-            }
-            *known = Some(ids);
-        }
-        cmds.extend(layout::fill_lonely(
-            &snapshot,
-            &mut self.halves.borrow_mut(),
-        ));
-        *self.snapshot.borrow_mut() = snapshot;
-        self.send(cmds);
-    }
-
     fn send(&self, cmds: Vec<Cmd>) {
         if cmds.is_empty() {
             return;
@@ -131,20 +112,19 @@ impl WindowControl for Niri {
     }
 
     fn open_on_side(&self, id: ToplevelId, side: Side) {
-        let cmds = layout::open_on_side(
-            &self.snapshot.borrow(),
-            id,
-            side,
-            &mut self.halves.borrow_mut(),
-        );
+        let cmds = layout::open_on_side(&self.snapshot.borrow(), id, side);
+        self.send(cmds);
+    }
+
+    fn open_alone(&self, id: ToplevelId) {
+        let cmds = layout::open_alone(&self.snapshot.borrow(), id);
         self.send(cmds);
     }
 }
 
-fn follow_events(socket: Socket, out: &async_channel::Sender<(Snapshot, bool)>) {
+fn follow_events(socket: Socket, out: &async_channel::Sender<Snapshot>) {
     let mut read = socket.read_events();
     let mut state = EventStreamState::default();
-    let mut windows_loaded = false;
     loop {
         let event = match read() {
             Ok(e) => e,
@@ -153,9 +133,6 @@ fn follow_events(socket: Socket, out: &async_channel::Sender<(Snapshot, bool)>) 
                 return;
             }
         };
-        if matches!(event, Event::WindowsChanged { .. }) {
-            windows_loaded = true;
-        }
         // Parts ignore events that are not theirs; only window and workspace changes matter here.
         let relevant = matches!(
             event,
@@ -171,10 +148,7 @@ fn follow_events(socket: Socket, out: &async_channel::Sender<(Snapshot, bool)>) 
         if state.apply(event).is_some() || !relevant {
             continue;
         }
-        if out
-            .send_blocking((snapshot_of(&state), windows_loaded))
-            .is_err()
-        {
+        if out.send_blocking(snapshot_of(&state)).is_err() {
             return;
         }
     }
@@ -210,8 +184,14 @@ fn snapshot_of(state: &EventStreamState) -> Snapshot {
     }
 }
 
-fn to_action(cmd: &Cmd) -> Action {
-    match *cmd {
+enum Outgoing {
+    Typed(Action),
+    /// A request for an action of our fork, already serialized.
+    Raw(String),
+}
+
+fn to_action(cmd: &Cmd) -> Outgoing {
+    Outgoing::Typed(match *cmd {
         Cmd::Focus(id) => Action::FocusWindow { id },
         Cmd::Close(id) => Action::CloseWindow { id: Some(id) },
         Cmd::MoveToWorkspace { window, workspace } => Action::MoveWindowToWorkspace {
@@ -219,11 +199,39 @@ fn to_action(cmd: &Cmd) -> Action {
             reference: WorkspaceReferenceArg::Id(workspace),
             focus: false,
         },
-        Cmd::SetWidthPercent { window, percent } => Action::SetWindowWidth {
-            id: Some(window),
-            change: SizeChange::SetProportion(percent),
-        },
         Cmd::MoveFocusedColumnTo(index) => Action::MoveColumnToIndex { index },
+        Cmd::PlaceInColumn {
+            window,
+            workspace,
+            column,
+        } => {
+            return Outgoing::Raw(place_in_column_request(window, workspace, column));
+        }
+    })
+}
+
+/// `MoveWindowToWorkspaceColumn` from our niri fork, in niri-ipc's JSON shape.
+fn place_in_column_request(window: u64, workspace: u64, column: usize) -> String {
+    format!(
+        r#"{{"Action":{{"MoveWindowToWorkspaceColumn":{{"window_id":{window},"reference":{{"Id":{workspace}}},"column":{column}}}}}}}"#
+    )
+}
+
+fn send_raw(json: &str) {
+    let result = (|| -> std::io::Result<String> {
+        let path = std::env::var_os(SOCKET_PATH_ENV)
+            .ok_or_else(|| std::io::Error::other(format!("{SOCKET_PATH_ENV} is not set")))?;
+        let mut stream = UnixStream::connect(path)?;
+        stream.write_all(json.as_bytes())?;
+        stream.write_all(b"\n")?;
+        let mut reply = String::new();
+        BufReader::new(stream).read_line(&mut reply)?;
+        Ok(reply)
+    })();
+    match result {
+        Ok(reply) if reply.starts_with(r#"{"Ok""#) => {}
+        Ok(reply) => tracing::warn!(reply = reply.trim(), json, "niri rejected action"),
+        Err(e) => tracing::warn!(error = %e, json, "niri action failed"),
     }
 }
 
@@ -234,5 +242,19 @@ fn send_action(action: Action) {
         Ok(Ok(_)) => {}
         Ok(Err(e)) => tracing::warn!(error = %e, ?action, "niri rejected action"),
         Err(e) => tracing::warn!(error = %e, ?action, "niri action failed"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fork_request_has_niri_ipc_shape() {
+        let json = place_in_column_request(7, 3, 2);
+        assert_eq!(
+            json,
+            r#"{"Action":{"MoveWindowToWorkspaceColumn":{"window_id":7,"reference":{"Id":3},"column":2}}}"#
+        );
     }
 }

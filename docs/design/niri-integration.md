@@ -1,8 +1,25 @@
 # Design: multitasking on niri
 
 How [multitasking.md](multitasking.md) maps onto niri ([ADR-0001](../decisions/0001-compositor-starting-point.md)):
-what the shell does over niri's IPC today, and what needs the fork. Action and event names are
-from `niri-ipc` v26.04 (`niri msg action …`, `niri msg event-stream`).
+what the shell does over niri's IPC, and what our fork changes. Action and event names are from
+`niri-ipc` v26.04 (`niri msg action …`, `niri msg event-stream`).
+
+## The fork
+
+[MintCarasique/niri](https://github.com/MintCarasique/niri), branch `bayleaf`, on top of niri
+v26.04; built and deployed by `scripts/deploy-niri.sh`. Driving the layout from outside over
+IPC meant chains of actions, each with its own animation, racing resize animations and stale
+events; so the rules live in the compositor, behind one layout option:
+
+- **`layout { screen-split }`**: a workspace is a screen. One column fills it, two get half each,
+  the view never scrolls. New tiled windows open on the empty workspace instead of next to the
+  focused app. Switching workspaces is a crossfade (the new screen's windows use the window-open
+  animation) instead of a vertical slide; windows moved between workspaces don't fly across.
+- **`MoveWindowToWorkspaceColumn { window_id, reference, column }`** (IPC action): put a window
+  on a workspace as column N and focus it, in one step. On a full pair it replaces the window on
+  that half, which moves to the empty workspace, and the newcomer fades in at half width.
+
+The shell sends the new action as raw JSON, so it keeps using the published `niri-ipc` crate.
 
 ## The mapping: one screen = one workspace
 
@@ -21,18 +38,19 @@ never comes into play, and a pair stays a pair when you switch away and back.
 
 ## Actions
 
-| Bayleaf action ([multitasking.md](multitasking.md)) | niri today | Needs the fork |
+| Bayleaf action ([multitasking.md](multitasking.md)) | How | Still to do |
 |---|---|---|
-| Tap an app in the rail | `FocusWindow { id }`: niri switches to its workspace | — |
-| App opens while another is shown | Shell sees `WindowOpenedOrChanged`, moves it with `MoveWindowToWorkspace` to the empty workspace and focuses it | A window rule "open on a new workspace" would avoid the visible jump |
-| Open on the left / right half | `MoveWindowToWorkspace` into the shown workspace, `SetWindowWidth { id, 50% }` on both, `MoveColumnLeft/Right` or `MoveColumnToIndex` for the side | — |
-| Replace a half | Move the replaced window to the empty workspace, then as above | — |
-| Swap sides | `SwapWindowLeft/Right` or `MoveColumnLeft/Right` | — |
+| Tap an app in the rail | `FocusWindow { id }`: niri switches (crossfade) to its screen | — |
+| App opens while another is shown | Fork: opens on the empty workspace by itself | — |
+| Open on the left / right half (menu or drag) | Fork: `MoveWindowToWorkspaceColumn` with column 1 or 2 | — |
+| Replace a half | Same action; the fork moves the replaced app out in the same step | — |
+| Swap sides | `FocusWindow` + `MoveColumnToIndex` | — |
+| Take an app out of a pair (menu *Full screen* or drag onto *Full screen*) | `MoveWindowToWorkspace` to the empty workspace + `FocusWindow` | — |
+| Partner fills the screen after a close or move | Fork: `screen-split` widths | — |
 | ✕ Close | `CloseWindow { id }` (from the rail menu for now) | Title strip with ← ☰ ✕ drawn by the compositor |
-| Partner fills the screen after a close | `SetWindowWidth { id, 100% }` on the remaining window | Automatic, without a resize flash |
 | Divider drag, release past 20 % | — | Divider handle and its gesture |
 | Overview | `ToggleOverview` (niri's zoomed-out workspaces; pairs show as one row) | Cards in our style, horizontal |
-| Switch animation | niri's vertical workspace slide | Crossfade (scale 0.94 → 1, opacity) |
+| Switch animation | Fork: new screen fades in with the window-open animation | The old screen fading out underneath |
 | Drop zones while dragging an icon | Shell: a full-screen layer surface over the work area | — |
 | Keyboard only after touching a field | — (keyboard mode: off until the rail button or the launcher search turns it on, [ADR-0005](../decisions/0005-on-screen-keyboard.md)) | Enable the input method only after a touch on the focused surface |
 | Edge swipes, dock-driven mode switch | — | Yes |
@@ -46,7 +64,8 @@ event stream (`WindowsChanged`, `WindowOpenedOrChanged`, `WindowClosed`, `Window
 `WorkspacesChanged`). foreign-toplevel stays as the fallback for other compositors.
 
 ## Order of work
-1. Shell: niri IPC client (event stream + actions), window list from it.
-2. Shell: new apps open on their own screen; tap switches; close from the rail menu.
-3. Shell: long-press menu *Open on the left / right*, drag with drop zones.
-4. Fork: title strip, then crossfade, then the divider.
+1. ~~Shell: niri IPC client (event stream + actions), window list from it.~~
+2. ~~Screens, split view, drop zones; `screen-split` and `MoveWindowToWorkspaceColumn` in the fork.~~
+3. Fork: title strip with ← ☰ ✕.
+4. Fork: input method only after a touch on the field (replaces keyboard mode).
+5. Fork: full crossfade, divider, overview cards.

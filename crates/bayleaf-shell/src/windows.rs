@@ -26,4 +26,9 @@ pub trait WindowControl {
     fn open_on_side(&self, id: ToplevelId, side: Side) {
         let _ = (id, side);
     }
+
+    /// Show the window on a screen of its own (out of its pair, if it is in one).
+    fn open_alone(&self, id: ToplevelId) {
+        self.activate(id);
+    }
 }
