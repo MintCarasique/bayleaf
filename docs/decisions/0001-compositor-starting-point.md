@@ -1,6 +1,6 @@
 # ADR-0001: Compositor starting point
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-13
 
 ## Context
@@ -94,19 +94,76 @@ None of this is a limit of Smithay itself, but it shows how much of a usable com
 leaves to us: idle behaviour, frame pacing, cursor handling and layout are exactly the parts that
 make the difference on this hardware.
 
-## Assessment so far
-Requirement 1 is the deciding one: the window model is the centre of a compositor, and niri's model
-is the one part we would have to throw away. The anvil spike shows the opposite risk for B: the
-foundation works on Bay Trail, but idle CPU, frame pacing and touch/cursor handling all need real
-work before it feels as good as labwc. That points to **C** (anvil structure, niri's proven pieces)
-or **D** if Rust stops being a hard requirement. Before deciding:
+## Spike: niri on the reference tablet (2026-11-13)
+niri v26.04 (Smithay `ff5fa7d`, linux-dmabuf capped at v5 there, so GTK 4.18 works), release build
+without screencasting, DRM/KMS session from SDDM with `bayleaf-shell` and squeekboard. Config:
+columns at 100 % width, no gaps, borders or focus ring. Setup:
+[prototypes/niri-session](../../prototypes/niri-session/setup.sh).
 
-- run niri itself on the tablet: if a well-built Smithay compositor reaches labwc's idle CPU and
-  smoothness here, B/C are viable; if not, D moves up;
-- sketch the screen/pair layout on top of anvil's space and check how much of the drawing and
-  input code can stay;
-- list the niri modules worth porting (frame clock, render elements, input method, foreign
-  toplevel) and check their dependencies on its layout code.
+| Idle, 30 s without touching | niri | anvil | labwc (M1) |
+|---|---|---|---|
+| Compositor CPU | 0.04 s (~0.1 % of a core) | ~2.3 s (~8 %) | ~0 % (not measured the same way) |
+| Compositor RSS | 112 MB | 96 MB | ~50 MB |
+| `bayleaf-shell` RSS | 68 MB | 149 MB | 146 MB |
+| Xwayland | separate `xwayland-satellite`, on demand (not installed here) | eager, 84 MB | on demand |
+
+- **Feels much smoother than labwc and anvil**; switching windows animates (horizontal slide).
+- Left rail works: niri implements `wlr-foreign-toplevel-management`.
+- squeekboard shows on text focus.
+- **No way to close a window by touch**: niri draws no server-side title bars, and the config asks
+  apps not to draw their own. The title strip (← ☰ ✕) is ours to add in any option.
+- The shell is half the size under niri than under labwc; not investigated yet.
+
+### What the niri spike changes
+niri's layout is a horizontal strip of columns per workspace. With full-width columns that strip
+*is* our full-screen model, and our 50/50 pair maps onto two half-width columns side by side,
+which niri already supports (column width presets, consume/expel). The window model is closer than
+assumed above; the differences are presentation (crossfade instead of a slide, no free scrolling
+between columns, overview with cards) and the title strip.
+
+niri also has an IPC (`niri msg`, a JSON socket): focus a window, close it, set a column width,
+move columns. The shell can drive much of [multitasking](../design/multitasking.md) through it
+without touching the compositor.
+
+## Assessment so far
+Smithay itself is fine on Bay Trail; what makes the difference is the compositor built on it, and
+niri is already very good here. That reverses the earlier lean towards anvil:
+
+- **A (niri) is the strongest option.** Start with upstream niri plus the IPC for M2 work; fork
+  only for what IPC cannot do (server-side title strip, crossfade switching, pair-aware overview),
+  and try to upstream generic pieces to keep the fork thin.
+- **B/C** would mean rebuilding frame pacing, animations and input handling that niri already
+  gets right on this hardware.
+- **D (labwc)** stays the fallback if niri's memory (about 60 MB more than labwc) becomes a
+  problem; idle CPU and smoothness favour niri.
+
+Open before accepting:
+- map every action in [multitasking.md](../design/multitasking.md) to niri IPC or to a needed
+  compositor change;
+- check how a title strip would fit into niri's rendering (it already draws borders and tab
+  indicators per window);
+- settle Xwayland (`xwayland-satellite` from source, or none at first).
 
 ## Decision
-Pending.
+**Base `bayleaf-comp` on niri (option A).**
+
+1. **Upstream niri first.** M2 starts on stock niri with a Bayleaf config; the shell drives windows
+   through niri's IPC wherever it can (focus, close, column width, moving columns).
+2. **Thin fork for the rest.** `bayleaf-comp` becomes a niri fork only for what IPC cannot do:
+   the server-side title strip (← ☰ ✕), crossfade switching, the pair-aware overview, edge
+   gestures and dock-driven mode switching. Generic pieces go upstream when niri wants them;
+   the fork is rebased on niri releases.
+3. **Attribution and licence.** niri is GPL-3.0-or-later, same as Bayleaf; the fork keeps its
+   history and copyright notices.
+
+Follow-ups (tracked in the roadmap): map [multitasking](../design/multitasking.md) onto niri IPC
+and list the compositor changes; prototype the title strip in niri's renderer; decide on
+Xwayland (`xwayland-satellite`).
+
+## Consequences
+- About 60 MB more compositor memory than labwc; still inside the 300 MB session budget with the
+  shell (68 MB) and squeekboard (37 MB), to be watched.
+- Our 50/50 pair is modelled as two half-width columns; the free horizontal scrolling of niri's
+  strip has to be constrained in tablet mode.
+- linux-dmabuf stays capped at v5 while Debian ships GTK 4.18 (niri already does).
+- The anvil spike in `prototypes/anvil-session` is kept for reference only.

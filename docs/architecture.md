@@ -25,9 +25,9 @@ Status: draft. Decisions that are still open are marked **OPEN** and tracked in 
 ## Components
 
 ### bayleaf-comp — compositor
-- Built on **Smithay**. Starting point **OPEN**
-  ([ADR-0001](decisions/0001-compositor-starting-point.md)): fork of niri (GPL-3, mature backend
-  and input handling) vs. building up from Smithay's `anvil` example.
+- Based on **niri** (Smithay) — [ADR-0001](decisions/0001-compositor-starting-point.md): stock
+  niri driven by the shell over niri IPC first, then a thin fork for what IPC cannot do (title
+  strip, crossfade switching, overview, edge gestures, dock mode switch).
 - **Window model**
   - *Tablet mode*: one app full screen or two side by side, exactly 50/50, with a 40 px
     server-side title strip; switching via the left rail and the overview; closing only via ✕.

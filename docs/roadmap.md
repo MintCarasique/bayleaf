@@ -7,8 +7,8 @@ pauses for a while.
 - [x] Repository, GPL-3.0-or-later, README, architecture draft
 - [x] Cargo workspace skeleton, CI (fmt, clippy `-D warnings`, test)
 - [x] Dev loop: build in Linux/WSL2, deploy to the tablet over SSH (`scripts/check.sh`, `scripts/deploy.sh`)
-- [ ] Run the compositor nested (winit backend) — comes with ADR-0001
-- [ ] ADR-0001: compositor starting point (niri, anvil or labwc); anvil spike on the tablet done
+- [x] ADR-0001: compositor starting point — niri (spikes with anvil and niri on the tablet)
+- [x] Run a Smithay compositor on the tablet (niri, anvil) and nested in WSLg (anvil)
 - [x] ADR-0002: shell toolkit — GTK4 (prototypes in `prototypes/`)
 
 ## M1 — Shell on an existing compositor
@@ -29,7 +29,12 @@ Layout follows [the side-rails design](design/rails.md) (ADR-0003, ADR-0004).
 - [ ] Portrait bottom bar and laptop-mode taskbar variants
 
 ## M2 — Compositor
-- [ ] Boots on DRM/KMS with libseat, XWayland
+On niri ([ADR-0001](decisions/0001-compositor-starting-point.md)): stock niri + IPC first, thin fork after.
+- [ ] Bayleaf session on niri: config, shell, squeekboard; replaces the labwc dev session
+- [ ] Map multitasking actions onto niri IPC; list the compositor changes
+- [ ] Title strip (← ☰ ✕) in the niri fork
+- [x] Boots on DRM/KMS with libseat (niri)
+- [ ] Xwayland via `xwayland-satellite`
 - [ ] Tablet mode window model ([multitasking](design/multitasking.md)): screens, 50/50 split
       view, divider, crossfade and slide transitions, overview; title strip (back, app menu, close)
 - [ ] Laptop mode floating windows, minimize, snapping
@@ -38,8 +43,8 @@ Layout follows [the side-rails design](design/rails.md) (ADR-0003, ADR-0004).
 - [ ] Dock detection → automatic mode switch
 
 ## M3 — Integration
-- [ ] input-method-v2, text-input-v3 and virtual-keyboard in `bayleaf-comp`, so squeekboard keeps
-      working on our compositor
+- [x] input-method-v2, text-input-v3 and virtual-keyboard in the compositor (niri has them;
+      squeekboard works)
 - [ ] App menu panel: `org_kde_kwin_appmenu` + DBusMenu, drill-down list with search
 - [ ] Session lock with touch PIN entry
 - [ ] Settings app for Bayleaf-specific options
