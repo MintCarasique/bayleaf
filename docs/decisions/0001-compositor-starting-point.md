@@ -54,14 +54,59 @@ Start from anvil for structure, and port specific, self-contained pieces from ni
 attribution; both GPL-3-compatible) where we hit the same problem: frame clock, animation helpers,
 input-method plumbing.
 
+### D. Fork labwc
+labwc is what M1 runs on today: C, wlroots, Openbox-like stacking window manager.
+
+- **For:** already works on the reference tablet (about 50 MB RSS, idle CPU ~0 %), with every
+  protocol the shell and squeekboard use; wlroots is the most battle-tested base; only the window
+  model, gestures and animations would be new.
+- **Against:** C instead of Rust, so no shared `bayleaf-ipc` with the shell and no memory safety in
+  the process whose crash ends the session; upstream wants a classic stacking WM, so split view and
+  animations mean a permanent fork; there is no animation code to build on.
+
+## Spike: anvil on the reference tablet (2026-11-13)
+Smithay main (`9ff2c5a`), anvil release build, DRM/KMS session from SDDM with `bayleaf-shell`
+and squeekboard on top. Setup: [prototypes/anvil-session](../../prototypes/anvil-session/setup.sh).
+
+**Works:** DRM/KMS and libseat on Bay Trail (GLES2), libinput touch, XWayland, layer-shell (both
+rails and the launcher), input-method-v2 + text-input-v3 (squeekboard shows on text focus).
+
+**Findings**
+| | anvil | labwc (M1) |
+|---|---|---|
+| Compositor RSS, idle | 96 MB | ~50 MB |
+| Compositor CPU, idle | ~8 % of a core (redraws all the time) | ~0 % |
+| Xwayland | started eagerly, 84 MB | started on demand |
+| Feels | slightly laggier | smooth |
+
+- **GTK 4.18 (Debian trixie) crashes on linux-dmabuf v6**, which current Smithay advertises when a
+  default feedback is set: `bayleaf-shell` segfaults inside `gtk_init` while handling the feedback.
+  Capping the global at version 5 fixes it. Any Smithay compositor has to cap it until Debian ships
+  a fixed GTK.
+- No `wlr-foreign-toplevel-management` in Smithay: the left rail stays empty; we implement it
+  ourselves (niri does, a few hundred lines).
+- No `wlr-screencopy`; Smithay has `ext-image-copy-capture` instead.
+- Example-level gaps, all ours to write in any Smithay-based option: the cursor is always drawn,
+  also during touch; new windows ignore exclusive zones (Firefox opens under the rails); touch drag
+  of a window jumps to the top-left corner; no frame scheduling or damage tracking worth the name.
+
+None of this is a limit of Smithay itself, but it shows how much of a usable compositor anvil
+leaves to us: idle behaviour, frame pacing, cursor handling and layout are exactly the parts that
+make the difference on this hardware.
+
 ## Assessment so far
 Requirement 1 is the deciding one: the window model is the centre of a compositor, and niri's model
-is the one part we would have to throw away. That favours **B or C**. Before deciding:
+is the one part we would have to throw away. The anvil spike shows the opposite risk for B: the
+foundation works on Bay Trail, but idle CPU, frame pacing and touch/cursor handling all need real
+work before it feels as good as labwc. That points to **C** (anvil structure, niri's proven pieces)
+or **D** if Rust stops being a hard requirement. Before deciding:
 
-- build anvil with the winit backend in WSL2 and on the tablet (DRM), check idle CPU and RSS;
+- run niri itself on the tablet: if a well-built Smithay compositor reaches labwc's idle CPU and
+  smoothness here, B/C are viable; if not, D moves up;
 - sketch the screen/pair layout on top of anvil's space and check how much of the drawing and
   input code can stay;
-- list the niri modules worth porting and check their dependencies on its layout code.
+- list the niri modules worth porting (frame clock, render elements, input method, foreign
+  toplevel) and check their dependencies on its layout code.
 
 ## Decision
 Pending.

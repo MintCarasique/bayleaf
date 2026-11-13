@@ -8,7 +8,7 @@ pauses for a while.
 - [x] Cargo workspace skeleton, CI (fmt, clippy `-D warnings`, test)
 - [x] Dev loop: build in Linux/WSL2, deploy to the tablet over SSH (`scripts/check.sh`, `scripts/deploy.sh`)
 - [ ] Run the compositor nested (winit backend) — comes with ADR-0001
-- [ ] ADR-0001: compositor starting point (niri fork vs. anvil)
+- [ ] ADR-0001: compositor starting point (niri, anvil or labwc); anvil spike on the tablet done
 - [x] ADR-0002: shell toolkit — GTK4 (prototypes in `prototypes/`)
 
 ## M1 — Shell on an existing compositor
