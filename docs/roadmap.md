@@ -18,7 +18,9 @@ Layout follows [the side-rails design](design/rails.md) (ADR-0003, ADR-0004).
 - [ ] Left rail: pinned apps, long-press menu, drag onto a screen half, overview button
 - [x] Right rail: clock, battery, brightness and volume as collapsible sliders (accordion)
 - [ ] Right rail: UPower and native PipeWire/logind clients instead of wpctl/busctl, media
-      controls (MPRIS), quick settings, keyboard toggle, notifications
+      controls (MPRIS), quick settings, notifications
+- [x] On-screen keyboard: squeekboard in the dev session, toggle at the bottom of the right rail
+      (ADR-0005); the launcher opens it only when the search field is tapped
 - [x] Launcher panel: app grid from `.desktop` files, search at the bottom, closes on outside tap
 - [ ] Launcher: pinned apps
 - [ ] Quick settings panel: toggles (Wi-Fi, Bluetooth, rotation lock, tablet mode), volume and
@@ -36,7 +38,8 @@ Layout follows [the side-rails design](design/rails.md) (ADR-0003, ADR-0004).
 - [ ] Dock detection → automatic mode switch
 
 ## M3 — Integration
-- [ ] On-screen keyboard via input-method-v2 (auto show/hide)
+- [ ] input-method-v2, text-input-v3 and virtual-keyboard in `bayleaf-comp`, so squeekboard keeps
+      working on our compositor
 - [ ] App menu panel: `org_kde_kwin_appmenu` + DBusMenu, drill-down list with search
 - [ ] Session lock with touch PIN entry
 - [ ] Settings app for Bayleaf-specific options

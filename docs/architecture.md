@@ -54,10 +54,10 @@ Status: draft. Decisions that are still open are marked **OPEN** and tracked in 
   taskbar) and `bayleaf-ipc` for Bayleaf-specific state (mode, rotation lock, gestures).
 - Quick toggles via system D-Bus services: NetworkManager, BlueZ, UPower, PipeWire/WirePlumber.
 
-### bayleaf-osk — on-screen keyboard
-- input-method-v2 so it appears automatically on text focus in GTK/Qt/Firefox; falls back to
-  virtual-keyboard for manual use.
-- Layouts from data files (en-US, ru-RU first).
+### bayleaf-osk — on-screen keyboard (deferred)
+- For now the session runs **squeekboard** ([ADR-0005](decisions/0005-on-screen-keyboard.md)):
+  input-method-v2 + text-input-v3, shows itself on text focus; the right rail toggles it.
+- Our own keyboard only if squeekboard hits a limit that matters (split layout, gestures, memory).
 
 ### bayleaf-ipc
 - Small versioned protocol (serde types) over a Unix socket in `$XDG_RUNTIME_DIR`.

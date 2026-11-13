@@ -2,6 +2,9 @@
 # Install a bare labwc session ("Bayleaf (dev)") on the test device to run bayleaf-shell and the
 # toolkit prototypes without a desktop around them. Run on the device: sudo ./setup.sh <user>
 #
+# On-screen keyboard: squeekboard (ADR-0005). It shows itself when a text field gets focus
+# (input-method-v2 + text-input-v3) and reserves its height, so maximized windows shrink above it.
+#
 # Keys: Win+0 bayleaf-shell, Win+1 GTK prototype, Win+2 iced prototype, Win+Q stop all,
 #       Win+Enter Konsole, Win+B Firefox, Win+E Dolphin, Win+Tab next window, Win+Esc exit.
 set -euo pipefail
@@ -9,7 +12,7 @@ user="${1:?usage: setup.sh <user>}"
 home=$(getent passwd "$user" | cut -d: -f6)
 cfg="$home/.config/bayleaf-proto"
 
-DEBIAN_FRONTEND=noninteractive apt-get install -y -qq labwc swaybg >/dev/null
+DEBIAN_FRONTEND=noninteractive apt-get install -y -qq labwc swaybg squeekboard >/dev/null
 
 install -d -o "$user" -g "$user" "$cfg"
 
@@ -38,6 +41,10 @@ EOF
 
 cat > "$cfg/autostart" <<'EOF'
 swaybg -c '#2b4a5a' >/dev/null 2>&1 &
+# squeekboard stays hidden unless the GNOME a11y switch is on; layouts come from input-sources.
+gsettings set org.gnome.desktop.a11y.applications screen-keyboard-enabled true
+gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'us'), ('xkb', 'ru')]"
+GTK_THEME=Adwaita:dark squeekboard >"${XDG_RUNTIME_DIR:-/tmp}/squeekboard.log" 2>&1 &
 ~/.local/bin/bayleaf-shell >"${XDG_RUNTIME_DIR:-/tmp}/bayleaf-shell.log" 2>&1 &
 EOF
 

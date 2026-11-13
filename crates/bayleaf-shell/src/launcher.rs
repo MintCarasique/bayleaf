@@ -62,6 +62,9 @@ impl Launcher {
 
         let search = gtk4::SearchEntry::new();
         search.set_placeholder_text(Some("Search apps"));
+        // Typing on a hardware keyboard anywhere in the panel goes to the search field, so the
+        // field itself does not need focus when the panel opens.
+        search.set_key_capture_widget(Some(&panel));
 
         let col = gtk4::Box::new(gtk4::Orientation::Vertical, 12);
         col.set_margin_top(12);
@@ -100,7 +103,9 @@ impl Launcher {
         self.scroll.vadjustment().set_value(0.0);
         self.scrim.present();
         self.panel.present();
-        self.search.grab_focus();
+        // No focus in the search field on open: a focused field enables text-input and the
+        // on-screen keyboard would pop up on every open. It shows when the field is tapped.
+        GtkWindowExt::set_focus(&self.panel, None::<&gtk4::Widget>);
     }
 
     /// Clears hover/pressed state left on a tile by the touch that launched an app: the panel

@@ -47,7 +47,7 @@ HP Pavilion x2 10 (Intel Atom Z3736F "Bay Trail", 2 GB RAM, 64 GB eMMC, 1280×80
 |---|---|---|
 | Compositor | `bayleaf-comp` | Smithay-based compositor: windows, touch gestures, tablet mode, rotation |
 | Shell | `bayleaf-shell` | Side rails, launcher, quick settings, notifications (layer-shell clients) |
-| Keyboard | `bayleaf-osk` | On-screen keyboard (input-method-v2 + virtual-keyboard) |
+| Keyboard | `bayleaf-osk` | On-screen keyboard — deferred; squeekboard for now ([ADR-0005](docs/decisions/0005-on-screen-keyboard.md)) |
 | IPC | `bayleaf-ipc` | Shared types and protocol between compositor and shell |
 
 Details: [docs/architecture.md](docs/architecture.md).

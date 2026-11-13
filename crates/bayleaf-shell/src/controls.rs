@@ -23,7 +23,7 @@ pub type WriteFn = Rc<dyn Fn(f64)>;
 /// One collapsible control: an icon and the 0–100 value behind it.
 pub struct Control {
     pub icon: &'static str,
-    pub tooltip: &'static str,
+    pub label: &'static str,
     pub read: ReadFn,
     pub write: WriteFn,
 }
@@ -88,7 +88,7 @@ pub fn stack(controls: Vec<Control>) -> gtk4::Box {
     for (i, control) in controls.into_iter().enumerate() {
         let button = gtk4::Button::from_icon_name(control.icon);
         button.set_halign(gtk4::Align::Center);
-        button.set_tooltip_text(Some(control.tooltip));
+        crate::style::name(&button, control.label);
 
         let scale = gtk4::Scale::with_range(gtk4::Orientation::Vertical, 0.0, 100.0, 1.0);
         scale.set_inverted(true);

@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use crate::toplevel::Controller;
 use crate::toplevel_model::{Toplevel, Toplevels};
-use crate::{controls, device, status};
+use crate::{controls, device, osk, status, style};
 
 pub const RAIL_WIDTH: i32 = 56;
 const FALLBACK_ICON: &str = "application-x-executable-symbolic";
@@ -64,7 +64,7 @@ impl LeftRail {
         let start = gtk4::Button::from_icon_name("view-app-grid-symbolic");
         start.add_css_class("start");
         start.set_halign(gtk4::Align::Center);
-        start.set_tooltip_text(Some("Start"));
+        style::name(&start, "Start");
         start.connect_clicked(move |_| on_start());
         col.append(&start);
 
@@ -103,11 +103,14 @@ impl LeftRail {
     fn app_button(&self, t: &Toplevel, theme: &gtk4::IconTheme) -> gtk4::Button {
         let b = gtk4::Button::from_icon_name(&icon_for(&t.app_id, theme));
         b.set_halign(gtk4::Align::Center);
-        b.set_tooltip_text(Some(if t.title.is_empty() {
-            &t.app_id
-        } else {
-            &t.title
-        }));
+        style::name(
+            &b,
+            if t.title.is_empty() {
+                &t.app_id
+            } else {
+                &t.title
+            },
+        );
         if t.activated {
             b.add_css_class("active");
         }
@@ -148,6 +151,8 @@ pub fn right_rail(app: &gtk4::Application) -> gtk4::ApplicationWindow {
     col.append(&battery);
     col.append(&controls::stack(device_controls()));
     col.append(&spacer());
+    // Bottom of the right rail: next to the keyboard it controls, mirroring Start on the left.
+    col.append(&osk::button());
 
     glib::timeout_add_seconds_local(15, move || {
         clock.set_text(&status::clock_text());
@@ -168,7 +173,7 @@ fn device_controls() -> Vec<controls::Control> {
             let read_bl = backlight.clone();
             list.push(controls::Control {
                 icon: "display-brightness-symbolic",
-                tooltip: "Brightness",
+                label: "Brightness",
                 read: Rc::new(move || {
                     let v = read_bl.percent();
                     Box::pin(async move { v })
@@ -181,7 +186,7 @@ fn device_controls() -> Vec<controls::Control> {
     let last_volume = Rc::new(std::cell::Cell::new(None::<f64>));
     list.push(controls::Control {
         icon: "audio-volume-high-symbolic",
-        tooltip: "Volume",
+        label: "Volume",
         read: Rc::new(|| Box::pin(device::volume_percent())),
         write: Rc::new(move |p| {
             device::set_volume_percent(p);

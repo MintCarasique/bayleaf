@@ -1,6 +1,7 @@
 //! Bayleaf CSS for the shell surfaces (see docs/design/rails.md, "Visual language").
 
 use gtk4::gdk;
+use gtk4::prelude::*;
 
 const CSS: &str = "
 window.bayleaf-rail { background: #1e211e; color: #e6e6e6; }
@@ -24,6 +25,12 @@ window.bayleaf-launcher { background: #1e211e; color: #e6e6e6; border-right: 1px
 .bayleaf-launcher .bayleaf-tile label { font-size: 11px; }
 .bayleaf-launcher entry { min-height: 44px; border-radius: 8px; }
 ";
+
+/// Names a control for screen readers. Used instead of tooltips: on a touchscreen a tooltip pops
+/// up on tap and lands under the finger or under the on-screen keyboard.
+pub fn name(widget: &impl IsA<gtk4::Accessible>, text: &str) {
+    widget.update_property(&[gtk4::accessible::Property::Label(text)]);
+}
 
 /// Installs the Bayleaf stylesheet for the default display.
 pub fn install() {

@@ -7,6 +7,7 @@ mod app_search;
 mod controls;
 mod device;
 mod launcher;
+mod osk;
 mod rails;
 mod status;
 mod style;
