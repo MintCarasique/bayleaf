@@ -25,17 +25,19 @@ Status: draft. Decisions that are still open are marked **OPEN** and tracked in 
 ## Components
 
 ### bayleaf-comp — compositor
-- Built on **Smithay**. Starting point **OPEN** (ADR-0001): fork of niri (GPL-3, mature backend and
-  input handling) vs. building up from Smithay's `anvil` example.
+- Built on **Smithay**. Starting point **OPEN**
+  ([ADR-0001](decisions/0001-compositor-starting-point.md)): fork of niri (GPL-3, mature backend
+  and input handling) vs. building up from Smithay's `anvil` example.
 - **Window model**
-  - *Tablet mode*: every toplevel maximized (or two side by side), with a 40 px server-side title
-    strip and a close button; switching via the left rail. Dialogs float centered.
-    Details: [design/windows.md](design/windows.md).
+  - *Tablet mode*: one app full screen or two side by side, exactly 50/50, with a 40 px
+    server-side title strip; switching via the left rail and the overview; closing only via ✕.
+    Dialogs float centered. Details: [design/multitasking.md](design/multitasking.md),
+    [design/windows.md](design/windows.md).
   - *Laptop mode*: floating, overlapping windows with snap-to-half; drag/resize with pointer or finger.
   - Minimize is a first-class state (shown in the taskbar), unlike tiling compositors.
 - **Touch**
-  - Edge swipes recognized in the compositor (not by grabbing `/dev/input`): right → action
-    center, left → window list, top → close, bottom → keyboard.
+  - Edge swipes recognized in the compositor (not by grabbing `/dev/input`): right → quick
+    settings, bottom → keyboard. No gesture closes a window or opens the overview.
   - Gesture coordinates are in *output* space, so rotation never breaks them.
   - Long-press = secondary click for clients that don't handle touch.
 - **Sensors**: accelerometer via iio-sensor-proxy (D-Bus); rotation lock; transform applied to

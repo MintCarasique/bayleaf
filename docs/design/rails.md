@@ -37,7 +37,8 @@ Accepted in [ADR-0003](../decisions/0003-ui-concept-rails.md), refined by
 ### Left rail — apps
 | Element | Tap | Long press / drag |
 |---|---|---|
-| Running and pinned apps (top, scrollable) | switch to app | long press: side by side, full screen, pin, close; drag onto a screen half: side by side |
+| Running and pinned apps (top, scrollable) | switch to app (its pair, if it is in one) | long press: full screen, open on the left / right, pin; drag onto a screen half: side by side ([multitasking.md](multitasking.md)) |
+| Overview (above Start) | open the overview of all screens | — |
 | Start (bottom) | open the launcher panel from the bottom-left corner | — |
 
 The active app is marked with a filled background, not a dot — readable at a glance. In side-by-side

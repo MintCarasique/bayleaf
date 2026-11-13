@@ -15,7 +15,7 @@ pauses for a while.
 Works on labwc / sway / KWin via layer-shell + foreign-toplevel.
 Layout follows [the side-rails design](design/rails.md) (ADR-0003, ADR-0004).
 - [x] Left rail: running apps via wlr-foreign-toplevel, tap to switch, Start at the bottom
-- [ ] Left rail: pinned apps, long-press menu
+- [ ] Left rail: pinned apps, long-press menu, drag onto a screen half, overview button
 - [x] Right rail: clock, battery, brightness and volume as collapsible sliders (accordion)
 - [ ] Right rail: UPower and native PipeWire/logind clients instead of wpctl/busctl, media
       controls (MPRIS), quick settings, keyboard toggle, notifications
@@ -28,8 +28,9 @@ Layout follows [the side-rails design](design/rails.md) (ADR-0003, ADR-0004).
 
 ## M2 — Compositor
 - [ ] Boots on DRM/KMS with libseat, XWayland
-- [ ] Tablet mode window model with the title strip (back, app menu, close), side by side;
-      laptop mode floating windows, minimize
+- [ ] Tablet mode window model ([multitasking](design/multitasking.md)): screens, 50/50 split
+      view, divider, crossfade and slide transitions, overview; title strip (back, app menu, close)
+- [ ] Laptop mode floating windows, minimize, snapping
 - [ ] Edge-swipe gestures, drag/resize by touch, long-press secondary click
 - [ ] Rotation from iio-sensor-proxy with correct touch mapping
 - [ ] Dock detection → automatic mode switch

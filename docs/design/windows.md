@@ -24,8 +24,6 @@ A slim server-side strip on top of every window that accepts server-side decorat
 - **☰ App menu**: opens the menu panel for this window (below).
 - **✕ Close.**
 - Minimise and maximise make no sense in tablet mode and are not shown.
-- Dragging the strip downwards past 25 % of the screen height closes the window (same as the
-  top-edge swipe); releasing earlier snaps it back.
 - Clients that draw their own titlebar (GTK4/libadwaita CSD) keep it and their own menus; Bayleaf
   adds no second strip.
 
@@ -52,11 +50,11 @@ window height), so in side-by-side mode each half opens its own menu.
 ### Actions
 | Action | How |
 |---|---|
-| Switch app | tap its icon in the left rail |
-| Close | ✕ in the title strip; swipe down from the top edge; or "Close" in the rail menu |
-| Side by side | drag an icon from the left rail onto the left or right half; drag the divider (6 px handle, 48 px grab zone) to resize. Max two windows. |
+| Switch app | tap its icon in the left rail, or a card in the overview |
+| Close | ✕ in the title strip (or on the overview card) — the only way; everything else sends the app to the background |
+| Side by side | drag an icon from the left rail onto the left or right half, or long press it. Always 50/50, max two windows; the divider (6 px handle, 48 px grab zone) only sends one side away. See [multitasking.md](multitasking.md). |
 | App menu | ☰ in the title strip (see above) |
-| Window menu | long press an icon in the left rail: side by side, full screen, pin to rail, close |
+| Window menu | long press an icon in the left rail: full screen, open on the left / right, pin to rail |
 | Minimise | not needed — the app stays in the rail |
 | Dialogs | float centred over a dimmed backdrop, no title strip |
 
